@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Button } from "../components/ui/Button";
-import { Input } from "../components/ui/Input";
-import { Label } from "../components/ui/Label";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
   Card,
   CardContent,
@@ -10,7 +10,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "../components/ui/Card";
+} from "../components/ui/card";
 import { useToast } from "../components/ui/use-toast";
 import { authService } from "../services/auth.service";
 
@@ -51,6 +51,7 @@ export function LoginPage() {
           description: "Registration successful! Please log in.",
         });
         setIsRegistering(false);
+        setFormData({ email: "", password: "" });
       } else {
         await authService.login(formData);
         const profile = await authService.getProfile();
@@ -86,13 +87,6 @@ export function LoginPage() {
     setFormData({ email: "", password: "" });
   };
 
-  const useDemoAccount = () => {
-    setFormData({
-      email: "demo@example.com",
-      password: "demo123",
-    });
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <Card className="w-[400px]">
@@ -106,25 +100,6 @@ export function LoginPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            {!isRegistering && (
-              <div className="bg-blue-50 p-4 rounded-md mb-4">
-                <p className="text-sm text-blue-700">
-                  <strong>Demo Account:</strong>
-                  <br />
-                  Email: demo@example.com
-                  <br />
-                  Password: demo123
-                </p>
-                <Button
-                  type="button"
-                  variant="link"
-                  className="text-blue-700 p-0 h-auto mt-2"
-                  onClick={useDemoAccount}
-                >
-                  Use Demo Account
-                </Button>
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input

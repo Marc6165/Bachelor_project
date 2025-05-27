@@ -18,14 +18,6 @@ interface UserProfile {
   name?: string;
 }
 
-// Demo user credentials
-const DEMO_USER = {
-  email: "demo@example.com",
-  password: "demo123",
-  id: "demo-user-123",
-  name: "Demo User"
-};
-
 class AuthService {
   private static instance: AuthService;
   private token: string | null = null;
@@ -53,11 +45,6 @@ class AuthService {
   }
 
   async register(credentials: RegisterCredentials): Promise<{ userId: string; email: string }> {
-    // For demo purposes, prevent registration with demo email
-    if (credentials.email === DEMO_USER.email) {
-      throw new Error("This email is reserved for demo purposes");
-    }
-
     try {
       const response = await fetch(`${this.API_URL}/register`, {
         method: "POST",
@@ -79,13 +66,6 @@ class AuthService {
   }
 
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    // Handle demo user login
-    if (credentials.email === DEMO_USER.email && credentials.password === DEMO_USER.password) {
-      const demoToken = "demo-token-" + Date.now();
-      this.setToken(demoToken);
-      return { token: demoToken };
-    }
-
     try {
       const response = await fetch(`${this.API_URL}/login`, {
         method: "POST",
@@ -109,15 +89,6 @@ class AuthService {
   }
 
   async getProfile(): Promise<UserProfile> {
-    // Handle demo user profile
-    if (this.token?.startsWith("demo-token-")) {
-      return {
-        id: DEMO_USER.id,
-        email: DEMO_USER.email,
-        name: DEMO_USER.name
-      };
-    }
-
     if (!this.token) {
       throw new Error("Not authenticated");
     }
@@ -138,7 +109,8 @@ class AuthService {
         throw new Error(error.message || "Failed to fetch profile");
       }
 
-      return await response.json();
+      const data = await response.json();
+      return data.user;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : "Failed to fetch profile");
     }
@@ -146,10 +118,6 @@ class AuthService {
 
   logout(): void {
     this.setToken(null);
-  }
-
-  getToken(): string | null {
-    return this.token;
   }
 
   isAuthenticated(): boolean {
