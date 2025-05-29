@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { quoteRequestService } from "../services/quote-request.service";
+import { useToast } from "./ui/use-toast";
 
 const steps = [
   { label: "Etager", icon: "🏢" },
@@ -16,6 +18,7 @@ const windowTypes = Array.from({ length: 18 }, (_, i) => ({
 
 export default function WindowCleaningWizard() {
   const [step, setStep] = useState(0);
+  const { toast } = useToast();
   const [selectedFloors, setSelectedFloors] = useState<number[]>([]);
   const [doubleGlazed, setDoubleGlazed] = useState("");
   const [cleaningType, setCleaningType] = useState("");
@@ -33,9 +36,41 @@ export default function WindowCleaningWizard() {
     address: "",
     city: "",
     zip: "",
-    message: "",
+    note: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const calculatePrice = () => {
+    let basePrice = 0;
+    
+    // Add price based on number of windows
+    const totalWindows = Object.values(selectedWindows).reduce((sum, count) => sum + count, 0);
+    basePrice += totalWindows * 50; // 50 DKK per window
+
+    // Add price based on floor
+    const floorMultiplier = selectedFloors.length > 0 ? Math.max(...selectedFloors) : 1;
+    basePrice *= 1 + ((floorMultiplier - 1) * 0.2); // 20% increase per floor
+
+    // Add price for storm windows
+    if (doubleGlazed === "Ja") {
+      basePrice *= 1.3; // 30% increase for storm windows
+    }
+
+    // Adjust price based on cleaning type
+    if (cleaningType === "Indvendig") {
+      basePrice *= 1.2; // 20% increase for interior cleaning
+    } else if (cleaningType === "Begge") {
+      basePrice *= 2; // Double price for both interior and exterior
+    }
+
+    // Apply discount for subscription plans
+    if (plan === "subscription") {
+      basePrice *= 0.8; // 20% discount for subscription
+    }
+
+    return Math.round(basePrice);
+  };
 
   // --- Stepper ---
   function StepIndicator() {
@@ -401,6 +436,60 @@ export default function WindowCleaningWizard() {
 
   // --- Step 5: Contact ---
   function StepContact() {
+    const handleSubmitQuoteRequest = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
+      
+      try {
+        const quoteRequest = {
+          customerType: contact.type,
+          name: contact.name,
+          email: contact.email,
+          phone: contact.phone,
+          address: contact.address,
+          city: contact.city || '',
+          zip: contact.zip || '',
+          service: 'WINDOW_CLEANING',
+          estimatedPrice: calculatePrice(),
+          parameters: {
+            floor: selectedFloors.join(','),
+            cleaningType: cleaningType,
+            stormWindows: doubleGlazed,
+            windows: Object.entries(selectedWindows)
+              .filter(([_, count]) => count > 0)
+              .map(([id, count]) => ({ id, count }))
+              .map(({ id, count }) => ({
+                id: id.padStart(2, '0'),
+                count,
+              }))
+              .join(','),
+            servicePlan: plan,
+            frequency: interval,
+          },
+          note: contact.note || '',
+        };
+
+        const response = await quoteRequestService.submitQuoteRequest(quoteRequest);
+        console.log('Quote request submitted:', response);
+        
+        toast({
+          title: "Anmodning sendt!",
+          description: "Vi har modtaget din anmodning og vender tilbage hurtigst muligt.",
+        });
+        
+        setSubmitted(true);
+      } catch (error) {
+        console.error('Error submitting quote request:', error);
+        toast({
+          variant: "destructive",
+          title: "Fejl",
+          description: "Der opstod en fejl ved afsendelse af din anmodning. Prøv venligst igen.",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    };
+
     return (
       <div className="flex flex-col items-center">
         <h2 className="text-xl font-semibold mb-4">
@@ -408,10 +497,7 @@ export default function WindowCleaningWizard() {
         </h2>
         <form
           className="w-full max-w-md flex flex-col gap-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setSubmitted(true);
-          }}
+          onSubmit={handleSubmitQuoteRequest}
         >
           <select
             value={contact.type}
@@ -443,6 +529,7 @@ export default function WindowCleaningWizard() {
           />
           <input
             required
+            type="email"
             placeholder="Email*"
             value={contact.email}
             onChange={(e) =>
@@ -459,39 +546,36 @@ export default function WindowCleaningWizard() {
             }
             className="border rounded px-2 py-1"
           />
-          <div className="flex gap-2">
-            <input
-              required
-              placeholder="By*"
-              value={contact.city}
-              onChange={(e) =>
-                setContact((c) => ({ ...c, city: e.target.value }))
-              }
-              className="border rounded px-2 py-1 flex-1"
-            />
-            <input
-              required
-              placeholder="Postnummer*"
-              value={contact.zip}
-              onChange={(e) =>
-                setContact((c) => ({ ...c, zip: e.target.value }))
-              }
-              className="border rounded px-2 py-1 flex-1"
-            />
-          </div>
-          <textarea
-            placeholder="Evt. besked (valgfrit)"
-            value={contact.message}
+          <input
+            placeholder="By"
+            value={contact.city || ''}
             onChange={(e) =>
-              setContact((c) => ({ ...c, message: e.target.value }))
+              setContact((c) => ({ ...c, city: e.target.value }))
             }
             className="border rounded px-2 py-1"
           />
+          <input
+            placeholder="Postnummer"
+            value={contact.zip || ''}
+            onChange={(e) =>
+              setContact((c) => ({ ...c, zip: e.target.value }))
+            }
+            className="border rounded px-2 py-1"
+          />
+          <textarea
+            placeholder="Bemærkninger (valgfrit)"
+            value={contact.note || ''}
+            onChange={(e) =>
+              setContact((c) => ({ ...c, note: e.target.value }))
+            }
+            className="border rounded px-2 py-1 h-24 resize-none"
+          />
           <button
-            className="mt-4 px-8 py-2 bg-blue-500 text-white rounded-full"
             type="submit"
+            disabled={isSubmitting}
+            className="bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 disabled:opacity-50"
           >
-            Indhent dit tilbud
+            {isSubmitting ? "Sender..." : "Kontakt mig"}
           </button>
         </form>
       </div>
@@ -526,7 +610,7 @@ export default function WindowCleaningWizard() {
               address: "",
               city: "",
               zip: "",
-              message: "",
+              note: "",
             });
           }}
         >

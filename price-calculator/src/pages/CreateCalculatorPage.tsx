@@ -9,10 +9,12 @@ import {
 } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import WindowCleaningWizard from "../components/WindowCleaningWizard";
 import WindowCleaningSetupWizard from "../components/WindowCleaningSetupWizard";
 import { saveCalculator } from "../features/calculator";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import type { CalculatorConfig } from "../features/calculator";
 
 const calculators = [
   { label: "Window Cleaning Calculator", value: "window-cleaning" },
@@ -80,9 +82,10 @@ function NumberOfWindowsCalculator() {
 
 const CreateCalculatorPage = () => {
   const navigate = useNavigate();
-  const [hourlyWage, setHourlyWage] = useState(300);
   const [selectedCalc, setSelectedCalc] = useState(calculators[0].value);
+  const [hourlyWage, setHourlyWage] = useState(300);
   const [isCreating, setIsCreating] = useState(false);
+  const [createdCalculator, setCreatedCalculator] = useState<CalculatorConfig | null>(null);
 
   const handleCreateCalculator = async () => {
     try {
@@ -99,14 +102,18 @@ const CreateCalculatorPage = () => {
         }
       }
 
-      const calculator = saveCalculator({
+      const calculator = await saveCalculator({
         type: selectedCalc,
         hourlyWage,
         settings,
       });
 
+      if (!calculator || !calculator.id) {
+        throw new Error('Invalid calculator response from server');
+      }
+
       toast.success("Calculator created successfully!");
-      navigate(`/embed/${calculator.id}`);
+      setCreatedCalculator(calculator);
     } catch (error) {
       console.error("Error creating calculator:", error);
       toast.error("Failed to create calculator. Please try again.");
@@ -117,7 +124,7 @@ const CreateCalculatorPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8">
         <Card>
           <CardHeader>
             <CardTitle>Create Your Calculator</CardTitle>
@@ -136,6 +143,7 @@ const CreateCalculatorPage = () => {
                 min={0}
                 value={hourlyWage}
                 onChange={(e) => setHourlyWage(Number(e.target.value))}
+                disabled={isCreating}
               />
             </div>
             <div>
@@ -146,6 +154,7 @@ const CreateCalculatorPage = () => {
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={selectedCalc}
                 onChange={(e) => setSelectedCalc(e.target.value)}
+                disabled={isCreating}
               >
                 {calculators.map((calc) => (
                   <option key={calc.value} value={calc.value}>
@@ -166,13 +175,18 @@ const CreateCalculatorPage = () => {
           </CardFooter>
         </Card>
 
+        {/* Calculator Preview */}
         {selectedCalc === "window-cleaning" && (
-          <WindowCleaningSetupWizard hourlyWage={hourlyWage} />
+          <>
+            <WindowCleaningWizard />
+            <WindowCleaningSetupWizard hourlyWage={hourlyWage} disabled={isCreating} />
+          </>
         )}
         {selectedCalc === "time-based" && <TimeBasedCalculator />}
         {selectedCalc === "area-based" && <AreaBasedCalculator />}
         {selectedCalc === "number-of-windows" && <NumberOfWindowsCalculator />}
 
+        {/* Embed Section */}
         <Card>
           <CardHeader>
             <CardTitle>Embed on Your Website</CardTitle>
@@ -183,9 +197,11 @@ const CreateCalculatorPage = () => {
           </CardHeader>
           <CardContent>
             <div className="bg-gray-100 rounded p-4 font-mono text-xs text-gray-700 select-all">
-              {
+              {createdCalculator ? (
+                `<iframe src="${window.location.origin}/calculator/${createdCalculator.id}" width="100%" height="600" frameBorder="0"></iframe>`
+              ) : (
                 '<iframe src="https://yourdomain.com/embed/calculator-id" width="100%" height="600" frameBorder="0"></iframe>'
-              }
+              )}
             </div>
             <div className="mt-4 text-sm text-gray-500">
               Need help? See our{" "}
