@@ -181,42 +181,42 @@ const DashboardPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <main className="max-w-7xl mx-auto py-8 px-4">
+      <main className="max-w-7xl mx-auto py-4 sm:py-8 px-2 sm:px-4">
         {/* Top Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-8">
           <Card>
-            <CardHeader>
-              <CardTitle>Total Revenue</CardTitle>
+            <CardHeader className="space-y-1 sm:space-y-2">
+              <CardTitle className="text-lg sm:text-xl">Total Revenue</CardTitle>
               <CardDescription>+20.1% from last month</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">
                 DKK 15,231.89
               </div>
-              <div className="mt-4 h-12 flex items-end">
+              <div className="mt-2 sm:mt-4 h-10 sm:h-12 flex items-end">
                 <StatChart heights={revenueChart} />
               </div>
             </CardContent>
           </Card>
           <Card>
-            <CardHeader>
-              <CardTitle>Quote Requests</CardTitle>
+            <CardHeader className="space-y-1 sm:space-y-2">
+              <CardTitle className="text-lg sm:text-xl">Quote Requests</CardTitle>
               <CardDescription>Pending: {pendingQuotes.length}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">
                 {totalQuotes} Total
               </div>
-              <div className="mt-4 h-12 flex items-end">
+              <div className="mt-2 sm:mt-4 h-10 sm:h-12 flex items-end">
                 <StatChart heights={quoteChart} />
               </div>
             </CardContent>
           </Card>
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle>Pending Quote Requests</CardTitle>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <Card className="lg:col-span-2 overflow-hidden">
+            <CardHeader className="space-y-1 sm:space-y-2">
+              <CardTitle className="text-lg sm:text-xl">Pending Quote Requests</CardTitle>
               <CardDescription>
                 Review and manage incoming quote requests
               </CardDescription>
@@ -225,78 +225,87 @@ const DashboardPage = () => {
               <div className="flex items-center mb-2 space-x-2">
                 <Input 
                   placeholder="Filter by email..." 
-                  className="w-64"
+                  className="w-full sm:w-64"
                   value={emailFilter}
                   onChange={(e) => setEmailFilter(e.target.value)}
                 />
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4">
-                        Loading...
-                      </TableCell>
-                    </TableRow>
-                  ) : pendingQuotes.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-4">
-                        No pending quote requests
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    pendingQuotes.map((quote) => (
-                      <TableRow key={quote._id || quote.id}>
-                        <TableCell>
-                          {new Date(quote.createdAt || '').toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>{quote.name}</TableCell>
-                        <TableCell>{quote.email}</TableCell>
-                        <TableCell>{quote.service}</TableCell>
-                        <TableCell className="font-semibold">
-                          DKK {quote.estimatedPrice.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="space-x-2">
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              console.log('Accept button clicked for quote:', quote);
-                              handleAcceptQuote(quote._id || quote.id!);
-                            }}
-                          >
-                            Accept
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              console.log('Dismiss button clicked for quote:', quote);
-                              handleDismissQuote(quote._id || quote.id!);
-                            }}
-                          >
-                            Dismiss
-                          </Button>
-                        </TableCell>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap">Date</TableHead>
+                        <TableHead className="whitespace-nowrap">Name</TableHead>
+                        <TableHead className="whitespace-nowrap">Email</TableHead>
+                        <TableHead className="whitespace-nowrap">Service</TableHead>
+                        <TableHead className="whitespace-nowrap">Amount</TableHead>
+                        <TableHead className="whitespace-nowrap">Actions</TableHead>
                       </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-4">
+                            Loading...
+                          </TableCell>
+                        </TableRow>
+                      ) : pendingQuotes.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-4">
+                            No pending quote requests
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        pendingQuotes.map((quote) => (
+                          <TableRow key={quote._id || quote.id}>
+                            <TableCell className="whitespace-nowrap">
+                              {new Date(quote.createdAt || '').toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">{quote.name}</TableCell>
+                            <TableCell className="whitespace-nowrap">{quote.email}</TableCell>
+                            <TableCell className="whitespace-nowrap">{quote.service}</TableCell>
+                            <TableCell className="whitespace-nowrap font-semibold">
+                              DKK {quote.estimatedPrice.toFixed(2)}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              <div className="flex flex-col sm:flex-row gap-2 sm:space-x-2">
+                                <Button
+                                  size="sm"
+                                  className="w-full sm:w-auto"
+                                  onClick={() => {
+                                    console.log('Accept button clicked for quote:', quote);
+                                    handleAcceptQuote(quote._id || quote.id!);
+                                  }}
+                                >
+                                  Accept
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full sm:w-auto"
+                                  onClick={() => {
+                                    console.log('Dismiss button clicked for quote:', quote);
+                                    handleDismissQuote(quote._id || quote.id!);
+                                  }}
+                                >
+                                  Dismiss
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
               {totalPages > 1 && (
                 <div className="flex justify-end mt-4 space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
                   >
@@ -305,6 +314,7 @@ const DashboardPage = () => {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="w-full sm:w-auto"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
                   >
@@ -314,47 +324,51 @@ const DashboardPage = () => {
               )}
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Quote History</CardTitle>
+          <Card className="overflow-hidden">
+            <CardHeader className="space-y-1 sm:space-y-2">
+              <CardTitle className="text-lg sm:text-xl">Quote History</CardTitle>
               <CardDescription>Past quote requests</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {otherQuotes.map((quote) => (
-                    <TableRow key={quote._id || quote.id}>
-                      <TableCell>
-                        <span className={
-                          quote.status === 'Accepted' ? 'text-green-600' :
-                          quote.status === 'Dismissed' ? 'text-red-600' :
-                          'text-gray-600'
-                        }>
-                          {quote.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>{quote.email}</TableCell>
-                      <TableCell className="font-semibold">
-                        DKK {quote.estimatedPrice.toFixed(2)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {otherQuotes.length === 0 && (
-                    <TableRow>
-                      <TableCell colSpan={3} className="text-center py-4">
-                        No quote history
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+              <div className="overflow-x-auto -mx-4 sm:mx-0">
+                <div className="inline-block min-w-full align-middle">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap">Status</TableHead>
+                        <TableHead className="whitespace-nowrap">Email</TableHead>
+                        <TableHead className="whitespace-nowrap">Amount</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {otherQuotes.map((quote) => (
+                        <TableRow key={quote._id || quote.id}>
+                          <TableCell className="whitespace-nowrap">
+                            <span className={
+                              quote.status === 'Accepted' ? 'text-green-600' :
+                              quote.status === 'Dismissed' ? 'text-red-600' :
+                              'text-gray-600'
+                            }>
+                              {quote.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">{quote.email}</TableCell>
+                          <TableCell className="whitespace-nowrap font-semibold">
+                            DKK {quote.estimatedPrice.toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {otherQuotes.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center py-4">
+                            No quote history
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
