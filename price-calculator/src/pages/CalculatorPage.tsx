@@ -3,6 +3,9 @@ import { useParams } from "react-router-dom";
 import { getCalculator } from "../features/calculator";
 import type { CalculatorConfig } from "../features/calculator";
 import WindowCleaningWizard from "../components/WindowCleaningWizard";
+import { AreaBasedCalculator } from "../components/AreaBasedCalculator";
+import { HourlyCalculator } from "../components/HourlyCalculator";
+import { FixedPackageCalculator } from "../components/FixedPackageCalculator";
 import { toast } from "sonner";
 
 const CalculatorPage = () => {
@@ -52,11 +55,38 @@ const CalculatorPage = () => {
     );
   }
 
+  const renderCalculator = () => {
+    const commonProps = {
+      hourlyWage: calculator.hourlyWage,
+      settings: calculator.settings,
+      onQuoteGenerated: (quoteId: string) => {
+        console.log("Quote generated:", quoteId);
+        toast.success("Quote generated successfully!");
+      },
+      onInvoiceCreated: (invoiceId: string) => {
+        console.log("Invoice created:", invoiceId);
+        toast.success("Invoice created successfully!");
+      }
+    };
+
+    switch (calculator.type) {
+      case "window-cleaning":
+        return <WindowCleaningWizard {...commonProps} />;
+      case "area-based":
+        return <AreaBasedCalculator {...commonProps} />;
+      case "hourly":
+        return <HourlyCalculator {...commonProps} />;
+      case "fixed-package":
+        return <FixedPackageCalculator {...commonProps} />;
+      default:
+        return <div className="text-center text-gray-500">Unknown calculator type</div>;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-4xl mx-auto">
-        {calculator.type === "window-cleaning" && <WindowCleaningWizard />}
-        {/* Add other calculator types here */}
+        {renderCalculator()}
       </div>
     </div>
   );

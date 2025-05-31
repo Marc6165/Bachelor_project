@@ -6,15 +6,10 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "./ui/card";
+} from "./ui/Card";
 import { useToast } from "./ui/use-toast";
-import { pricingService } from "../services/pricing.service";
-import { invoiceService } from "../services/invoice.service";
-import type {
-  CalculateQuoteRequest,
-  QuoteResponse,
-} from "../services/pricing.service";
-import type { CustomerDetails } from "../services/invoice.service";
+import { quoteRequestService } from "../services/quote-request.service";
+import type { QuoteRequest } from "../services/quote-request.service";
 
 interface CalculatorProps {
   serviceType: string;
@@ -28,7 +23,24 @@ interface CalculatorProps {
     required?: boolean;
   }[];
   onQuoteGenerated?: (quoteId: string) => void;
-  onInvoiceCreated?: (invoiceId: string) => void;
+  calculatePrice?: (parameters: Record<string, string | number>) => {
+    total: number;
+    currency: string;
+    breakdown: Record<string, number>;
+  };
+}
+
+interface CustomerDetails {
+  name: string;
+  email: string;
+  phone: string;
+  address: {
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
 }
 
 export function Calculator({
@@ -37,16 +49,21 @@ export function Calculator({
   description,
   parameters,
   onQuoteGenerated,
-  onInvoiceCreated,
+  calculatePrice,
 }: CalculatorProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [showCustomerForm, setShowCustomerForm] = useState(false);
+  const [currentPrice, setCurrentPrice] = useState<{
+    total: number;
+    currency: string;
+    breakdown: Record<string, number>;
+  } | null>(null);
   const [customerDetails, setCustomerDetails] = useState<CustomerDetails>({
     name: "",
     email: "",
+    phone: "",
     address: {
       street: "",
       city: "",
@@ -57,10 +74,17 @@ export function Calculator({
   });
 
   const handleParameterChange = (name: string, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
+    const newFormData = {
+      ...formData,
       [name]: value,
-    }));
+    };
+    setFormData(newFormData);
+
+    // Update current price if all required parameters are filled
+    if (calculatePrice && isServiceFormValid(newFormData)) {
+      const price = calculatePrice(newFormData);
+      setCurrentPrice(price);
+    }
   };
 
   const handleCustomerDetailsChange = (
@@ -88,56 +112,104 @@ export function Calculator({
     }
   };
 
-  const handleCalculate = async () => {
-    setIsLoading(true);
-    try {
-      const request: CalculateQuoteRequest = {
-        serviceType,
-        parameters: formData,
-      };
-
-      const response = await pricingService.calculateQuote(request);
-      setQuote(response);
-      onQuoteGenerated?.(response.quoteId);
-      setShowCustomerForm(true);
-
-      toast({
-        title: "Quote Generated",
-        description: "Your quote has been generated successfully!",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description:
-          error instanceof Error ? error.message : "Failed to generate quote",
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const isServiceFormValid = (data: Record<string, string> = formData) => {
+    return parameters
+      .filter((param) => param.required)
+      .every((param) => data[param.name]?.trim() !== "");
   };
 
-  const handleCreateInvoice = async () => {
-    if (!quote) return;
+  const isCustomerDetailsValid = () => {
+    return (
+      customerDetails.name.trim() !== "" &&
+      customerDetails.email.trim() !== "" &&
+      customerDetails.phone.trim() !== "" &&
+      customerDetails.address.street.trim() !== "" &&
+      customerDetails.address.city.trim() !== "" &&
+      customerDetails.address.state.trim() !== "" &&
+      customerDetails.address.zipCode.trim() !== "" &&
+      customerDetails.address.country.trim() !== ""
+    );
+  };
+
+  const handleShowCustomerForm = () => {
+    if (!isServiceFormValid()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please fill in all required service details first.",
+      });
+      return;
+    }
+    setShowCustomerForm(true);
+  };
+
+  const handleBack = () => {
+    setShowCustomerForm(false);
+  };
+
+  const handleSubmitQuoteRequest = async () => {
+    if (!isCustomerDetailsValid()) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please fill in all customer details to submit your request.",
+      });
+      return;
+    }
+
+    if (!currentPrice) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please complete the service details first.",
+      });
+      return;
+    }
 
     setIsLoading(true);
     try {
-      const invoice = await invoiceService.createInvoice({
-        quoteId: quote.quoteId,
-        customerDetails,
+      const quoteRequest = await quoteRequestService.submitQuoteRequest({
+        customerType: "individual",
+        name: customerDetails.name,
+        email: customerDetails.email,
+        phone: customerDetails.phone,
+        address: customerDetails.address.street,
+        city: customerDetails.address.city,
+        zip: customerDetails.address.zipCode,
+        service: serviceType,
+        estimatedPrice: currentPrice.total,
+        parameters: formData,
       });
 
-      onInvoiceCreated?.(invoice.id);
+      onQuoteGenerated?.(quoteRequest.id || "");
+
       toast({
-        title: "Invoice Created",
-        description: "Your invoice has been created successfully!",
+        title: "Request Submitted",
+        description: "Your quote request has been submitted successfully! We'll review it and get back to you soon.",
+      });
+
+      // Reset the form
+      setFormData({});
+      setCurrentPrice(null);
+      setShowCustomerForm(false);
+      setCustomerDetails({
+        name: "",
+        email: "",
+        phone: "",
+        address: {
+          street: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          country: "",
+        },
       });
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
         description:
-          error instanceof Error ? error.message : "Failed to create invoice",
+          error instanceof Error ? error.message : "Failed to submit quote request",
       });
     } finally {
       setIsLoading(false);
@@ -151,65 +223,79 @@ export function Calculator({
         {description && <p className="text-sm text-gray-500">{description}</p>}
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {parameters.map((param) => (
-            <div key={param.name} className="space-y-2">
-              <label className="text-sm font-medium">{param.label}</label>
-              {param.type === "select" ? (
-                <select
-                  className="w-full p-2 border rounded-md"
-                  value={formData[param.name] || ""}
-                  onChange={(e) =>
-                    handleParameterChange(param.name, e.target.value)
-                  }
-                  required={param.required}
-                >
-                  <option value="">Select {param.label}</option>
-                  {param.options?.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  type={param.type}
-                  className="w-full p-2 border rounded-md"
-                  value={formData[param.name] || ""}
-                  onChange={(e) =>
-                    handleParameterChange(param.name, e.target.value)
-                  }
-                  required={param.required}
-                />
+        <div className="space-y-8">
+          {!showCustomerForm ? (
+            /* Service Parameters Section */
+            <div className="space-y-4">
+              <h3 className="font-medium text-lg">Service Details</h3>
+              {parameters.map((param) => (
+                <div key={param.name} className="space-y-2">
+                  <label className="text-sm font-medium">
+                    {param.label} {param.required && "*"}
+                  </label>
+                  {param.type === "select" ? (
+                    <select
+                      className="w-full p-2 border rounded-md"
+                      value={formData[param.name] || ""}
+                      onChange={(e) =>
+                        handleParameterChange(param.name, e.target.value)
+                      }
+                      required={param.required}
+                    >
+                      <option value="">Select {param.label}</option>
+                      {param.options?.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={param.type}
+                      className="w-full p-2 border rounded-md"
+                      value={formData[param.name] || ""}
+                      onChange={(e) =>
+                        handleParameterChange(param.name, e.target.value)
+                      }
+                      required={param.required}
+                    />
+                  )}
+                </div>
+              ))}
+
+              {/* Current Price */}
+              {currentPrice && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-md">
+                  <h4 className="font-medium mb-2">Estimated Price</h4>
+                  <p className="text-lg font-bold">
+                    Total: {currentPrice.currency} {currentPrice.total}
+                  </p>
+                  <div className="mt-2">
+                    <h5 className="font-medium text-sm">Breakdown:</h5>
+                    {Object.entries(currentPrice.breakdown).map(([key, value]) => (
+                      <p key={key} className="text-sm">
+                        {key}: {currentPrice.currency} {value}
+                      </p>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
-          ))}
-
-          {quote && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-md">
-              <h3 className="font-medium">Quote Summary</h3>
-              <p className="text-lg font-bold">
-                Total: {quote.priceDetails.currency} {quote.priceDetails.total}
-              </p>
-              <div className="mt-2">
-                <h4 className="font-medium">Breakdown:</h4>
-                {Object.entries(quote.priceDetails.breakdown).map(
-                  ([key, value]) => (
-                    <p key={key} className="text-sm">
-                      {key}: {quote.priceDetails.currency} {value}
-                    </p>
-                  )
-                )}
+          ) : (
+            /* Customer Details Section */
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={handleBack}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  ← Back to Service Details
+                </button>
+                <h3 className="font-medium text-lg">Customer Details</h3>
               </div>
-            </div>
-          )}
-
-          {showCustomerForm && (
-            <div className="mt-4 space-y-4">
-              <h3 className="font-medium">Customer Details</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Name</label>
+                  <label className="text-sm font-medium">Name *</label>
                   <input
                     type="text"
                     className="w-full p-2 border rounded-md"
@@ -221,7 +307,7 @@ export function Calculator({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Email</label>
+                  <label className="text-sm font-medium">Email *</label>
                   <input
                     type="email"
                     className="w-full p-2 border rounded-md"
@@ -233,7 +319,19 @@ export function Calculator({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Street</label>
+                  <label className="text-sm font-medium">Phone *</label>
+                  <input
+                    type="tel"
+                    className="w-full p-2 border rounded-md"
+                    value={customerDetails.phone}
+                    onChange={(e) =>
+                      handleCustomerDetailsChange("phone", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Street Address *</label>
                   <input
                     type="text"
                     className="w-full p-2 border rounded-md"
@@ -248,7 +346,7 @@ export function Calculator({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">City</label>
+                  <label className="text-sm font-medium">City *</label>
                   <input
                     type="text"
                     className="w-full p-2 border rounded-md"
@@ -263,7 +361,7 @@ export function Calculator({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">State</label>
+                  <label className="text-sm font-medium">State *</label>
                   <input
                     type="text"
                     className="w-full p-2 border rounded-md"
@@ -278,7 +376,7 @@ export function Calculator({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">ZIP Code</label>
+                  <label className="text-sm font-medium">ZIP Code *</label>
                   <input
                     type="text"
                     className="w-full p-2 border rounded-md"
@@ -293,7 +391,7 @@ export function Calculator({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Country</label>
+                  <label className="text-sm font-medium">Country *</label>
                   <input
                     type="text"
                     className="w-full p-2 border rounded-md"
@@ -308,18 +406,43 @@ export function Calculator({
                   />
                 </div>
               </div>
+
+              {/* Show current price in customer details step too */}
+              {currentPrice && (
+                <div className="mt-6 p-4 bg-gray-50 rounded-md">
+                  <h4 className="font-medium mb-2">Estimated Price</h4>
+                  <p className="text-lg font-bold">
+                    Total: {currentPrice.currency} {currentPrice.total}
+                  </p>
+                  <div className="mt-2">
+                    <h5 className="font-medium text-sm">Breakdown:</h5>
+                    {Object.entries(currentPrice.breakdown).map(([key, value]) => (
+                      <p key={key} className="text-sm">
+                        {key}: {currentPrice.currency} {value}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
       </CardContent>
       <CardFooter className="flex justify-end space-x-2">
-        {!showCustomerForm ? (
-          <Button onClick={handleCalculate} disabled={isLoading}>
-            {isLoading ? "Calculating..." : "Calculate Quote"}
+        {!showCustomerForm && (
+          <Button 
+            onClick={handleShowCustomerForm} 
+            disabled={!isServiceFormValid()}
+          >
+            Next: Enter Customer Details
           </Button>
-        ) : (
-          <Button onClick={handleCreateInvoice} disabled={isLoading}>
-            {isLoading ? "Creating Invoice..." : "Create Invoice"}
+        )}
+        {showCustomerForm && (
+          <Button 
+            onClick={handleSubmitQuoteRequest} 
+            disabled={isLoading || !isCustomerDetailsValid()}
+          >
+            {isLoading ? "Submitting..." : "Submit Quote Request"}
           </Button>
         )}
       </CardFooter>
