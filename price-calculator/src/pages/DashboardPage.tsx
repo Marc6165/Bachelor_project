@@ -182,6 +182,8 @@ const DashboardPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <main className="max-w-7xl mx-auto py-4 sm:py-8 px-2 sm:px-4">
+        {/* Dashboard Title */}
+        <h1 data-testid="dashboard-title" className="text-2xl font-bold mb-6">Dashboard</h1>
         {/* Top Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-8">
           <Card>
@@ -232,7 +234,7 @@ const DashboardPage = () => {
               </div>
               <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <div className="inline-block min-w-full align-middle">
-                  <Table>
+                  <Table data-testid="pending-quotes-table">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="whitespace-nowrap">Date</TableHead>
@@ -332,7 +334,7 @@ const DashboardPage = () => {
             <CardContent>
               <div className="overflow-x-auto -mx-4 sm:mx-0">
                 <div className="inline-block min-w-full align-middle">
-                  <Table>
+                  <Table data-testid="quote-history-table">
                     <TableHeader>
                       <TableRow>
                         <TableHead className="whitespace-nowrap">Status</TableHead>

@@ -5,6 +5,13 @@ import { ContactForm } from "./ContactForm";
 import { PriceDisplay } from "./PriceDisplay";
 import { MultiplierDisplay } from "./MultiplierDisplay";
 
+interface WindowCleaningWizardProps {
+  hourlyWage: number;
+  settings: Record<string, unknown>;
+  onQuoteGenerated?: (quoteId: string) => void;
+  onInvoiceCreated?: (invoiceId: string) => void;
+}
+
 const steps = [
   { label: "Etager", icon: "🏢" },
   { label: "Type", icon: "🧼" },
@@ -19,16 +26,14 @@ const windowTypes = Array.from({ length: 18 }, (_, i) => ({
   image: "https://img.icons8.com/windows/96/000000/window.png",
 }));
 
-export default function WindowCleaningWizard() {
+export default function WindowCleaningWizard({ hourlyWage, settings, onQuoteGenerated, onInvoiceCreated }: WindowCleaningWizardProps) {
   const [step, setStep] = useState(0);
   const { toast } = useToast();
   const [selectedFloors, setSelectedFloors] = useState<number[]>([]);
   const [doubleGlazed, setDoubleGlazed] = useState("");
   const [cleaningType, setCleaningType] = useState("");
   const [dirtiness, setDirtiness] = useState("");
-  const [selectedWindows, setSelectedWindows] = useState<
-    Record<string, number>
-  >({});
+  const [selectedWindows, setSelectedWindows] = useState<Record<string, number>>({});
   const [plan, setPlan] = useState<"one-time" | "subscription">("subscription");
   const [interval, setInterval] = useState<4 | 8 | 12>(4);
   const [contact, setContact] = useState({

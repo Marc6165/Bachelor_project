@@ -258,6 +258,7 @@ export function Calculator({
                         handleParameterChange(param.name, e.target.value)
                       }
                       required={param.required}
+                      data-testid={`calculator-input-${param.name}`}
                     />
                   )}
                 </div>
@@ -441,6 +442,7 @@ export function Calculator({
           <Button 
             onClick={handleSubmitQuoteRequest} 
             disabled={isLoading || !isCustomerDetailsValid()}
+            data-testid="save-quote-button"
           >
             {isLoading ? "Submitting..." : "Submit Quote Request"}
           </Button>

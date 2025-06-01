@@ -36,6 +36,12 @@ export default function TopNav() {
                 <NavLink
                   key={item.to}
                   to={item.to}
+                  data-testid={
+                    item.to === "/" ? "dashboard-link" :
+                    item.to === "/quotes" ? "quotes-link" :
+                    item.to === "/create-calculator" ? "create-calculator-link" :
+                    item.to === "/embed-calculator" ? "embed-calculator-link" : undefined
+                  }
                   className={({ isActive }: { isActive: boolean }) =>
                     `font-medium px-1 transition-colors whitespace-nowrap ${
                       isActive ? "text-blue-600" : "text-gray-700 hover:text-blue-600"
@@ -70,6 +76,7 @@ export default function TopNav() {
             <Button
               variant="ghost"
               onClick={handleSignOut}
+              data-testid="logout-button"
               className="text-gray-700 hover:text-blue-600"
             >
               Sign Out
@@ -84,6 +91,12 @@ export default function TopNav() {
             <NavLink
               key={item.to}
               to={item.to}
+              data-testid={
+                item.to === "/" ? "dashboard-link" :
+                item.to === "/quotes" ? "quotes-link" :
+                item.to === "/create-calculator" ? "create-calculator-link" :
+                item.to === "/embed-calculator" ? "embed-calculator-link" : undefined
+              }
               className={({ isActive }: { isActive: boolean }) =>
                 `block px-3 py-2 rounded-md text-base font-medium ${
                   isActive 

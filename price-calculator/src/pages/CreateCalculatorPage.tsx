@@ -38,6 +38,7 @@ export default function CreateCalculatorPage() {
   const [hourlyWage, setHourlyWage] = useState(150);
   const [isCreating, setIsCreating] = useState(false);
   const [createdCalculator, setCreatedCalculator] = useState<CalculatorConfig | null>(null);
+  const navigate = useNavigate();
 
   const handleCreateCalculator = async () => {
     setIsCreating(true);
@@ -65,6 +66,8 @@ export default function CreateCalculatorPage() {
 
       setCreatedCalculator(calculator);
       toast.success("Calculator created successfully!");
+      // Navigate to the calculator page
+      navigate(`/calculator/${calculator.id}`);
     } catch (error) {
       console.error("Error creating calculator:", error);
       toast.error("Failed to create calculator. Please try again.");
@@ -114,6 +117,7 @@ export default function CreateCalculatorPage() {
                 value={hourlyWage}
                 onChange={(e) => setHourlyWage(Number(e.target.value))}
                 disabled={isCreating}
+                data-testid="calculator-hourly-wage"
               />
             </div>
             <div>
@@ -125,6 +129,7 @@ export default function CreateCalculatorPage() {
                 value={selectedCalc}
                 onChange={(e) => setSelectedCalc(e.target.value)}
                 disabled={isCreating}
+                data-testid="calculator-type"
               >
                 {calculators.map((calc) => (
                   <option key={calc.value} value={calc.value}>
@@ -139,6 +144,7 @@ export default function CreateCalculatorPage() {
               onClick={handleCreateCalculator}
               disabled={isCreating}
               className="w-full"
+              data-testid="save-calculator"
             >
               {isCreating ? "Creating..." : "Create Calculator"}
             </Button>
