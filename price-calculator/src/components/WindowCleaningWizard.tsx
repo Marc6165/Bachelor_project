@@ -154,25 +154,25 @@ export default function WindowCleaningWizard({ hourlyWage, settings, onQuoteGene
               <rect x="10" y="10" width="130" height="210" fill="#FFFFFF" stroke="#333" strokeWidth="2" rx="5" ry="5" />
               <rect x="3" y="224" width="143" height="5" fill="#F5F5DC" stroke="#333" strokeWidth="2" rx="5" ry="5" />
               {[3, 2, 1, 0].map((floor) => (
-                <g
-                  key={floor}
+              <g
+                key={floor}
                   id={`floorGroup${floor}`}
                   className="clickable-floor"
                   style={{ cursor: "pointer" }}
-                  onClick={() => {
-                    setSelectedFloors((f) =>
-                      f.includes(floor)
-                        ? f.filter((x) => x !== floor)
-                        : [...f, floor]
-                    );
-                  }}
-                >
-                  <rect
+                onClick={() => {
+                  setSelectedFloors((f) =>
+                    f.includes(floor)
+                      ? f.filter((x) => x !== floor)
+                      : [...f, floor]
+                  );
+                }}
+              >
+                <rect
                     x="15"
                     y={20 + (3 - floor) * 50}
                     width="120"
                     height="40"
-                    fill={selectedFloors.includes(floor) ? "#6A94FF" : "#F0F0F0"}
+                  fill={selectedFloors.includes(floor) ? "#6A94FF" : "#F0F0F0"}
                     stroke="#333"
                     strokeWidth="2"
                     rx="5"
@@ -212,21 +212,21 @@ export default function WindowCleaningWizard({ hourlyWage, settings, onQuoteGene
                     ry="5"
                   />
                 </g>
-              ))}
+                ))}
             </g>
             {[3, 2, 1, 0].map((floor) => (
-              <text
+                <text
                 key={floor}
                 x="200"
                 y={70 + (3 - floor) * 50}
-                fill={selectedFloors.includes(floor) ? "#6A94FF" : "#36454F"}
+                  fill={selectedFloors.includes(floor) ? "#6A94FF" : "#36454F"}
                 fontSize="1.1rem"
                 fontWeight={selectedFloors.includes(floor) ? "bold" : "normal"}
                 alignmentBaseline="middle"
                 style={{ cursor: "pointer" }}
-              >
-                {floor === 0 ? "Stue" : `${floor}. sal`}
-              </text>
+                >
+                  {floor === 0 ? "Stue" : `${floor}. sal`}
+                </text>
             ))}
           </svg>
         </div>
@@ -641,19 +641,19 @@ export default function WindowCleaningWizard({ hourlyWage, settings, onQuoteGene
   return (
     <div className="bg-white p-2 sm:p-4 rounded-xl max-w-4xl mx-auto shadow border border-gray-200">
       <StepIndicator />
-      {submitted ? (
-        <StepSuccess />
-      ) : step === 0 ? (
-        <StepFloors />
-      ) : step === 1 ? (
-        <StepType />
-      ) : step === 2 ? (
-        <StepWindows />
-      ) : step === 3 ? (
-        <StepPrice />
-      ) : (
-        <StepContact />
-      )}
+        {submitted ? (
+          <StepSuccess />
+        ) : step === 0 ? (
+          <StepFloors />
+        ) : step === 1 ? (
+          <StepType />
+        ) : step === 2 ? (
+          <StepWindows />
+        ) : step === 3 ? (
+          <StepPrice />
+        ) : (
+          <StepContact />
+        )}
     </div>
   );
 }

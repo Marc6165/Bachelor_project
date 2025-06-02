@@ -13,10 +13,10 @@ import CalculatorPage from "./pages/CalculatorPage";
 import { Toaster } from "./components/ui/toaster";
 import { LoginPage } from "./pages/LoginPage";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import { authService } from "./services/auth.service";
+import { useAppSelector } from "./store/hooks";
 
 export default function App() {
-  const isAuthenticated = authService.isAuthenticated();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   return (
     <Router>

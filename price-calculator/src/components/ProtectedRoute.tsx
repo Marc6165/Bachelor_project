@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from "react-router-dom";
-import { authService } from "../services/auth.service";
+import { useAppSelector } from "../store/hooks";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const location = useLocation();
-  const isAuthenticated = authService.isAuthenticated();
+  const { isAuthenticated } = useAppSelector((state) => state.auth);
 
   if (!isAuthenticated) {
     // Redirect to login page but save the attempted url
