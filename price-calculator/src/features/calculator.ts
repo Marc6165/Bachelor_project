@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import { calculatorApi } from '../services/api';
 
 export interface CalculatorConfig {
   id: string;
@@ -20,57 +20,48 @@ export interface CalculatorConfig {
 
 // Store calculators in localStorage for now
 // In a real app, this would be stored in a database
-export const saveCalculator = (config: Omit<CalculatorConfig, 'id' | 'createdAt' | 'updatedAt'>): CalculatorConfig => {
-  const calculator: CalculatorConfig = {
-    ...config,
-    id: uuidv4(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
-
-  const existingCalculators = getCalculators();
-  existingCalculators.push(calculator);
-  localStorage.setItem('calculators', JSON.stringify(existingCalculators));
-
-  return calculator;
+export const saveCalculator = async (config: Omit<CalculatorConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<CalculatorConfig> => {
+  const response = await calculatorApi.createCalculator(config);
+  return response as CalculatorConfig;
 };
 
-export const getCalculators = (): CalculatorConfig[] => {
-  const calculators = localStorage.getItem('calculators');
-  return calculators ? JSON.parse(calculators) : [];
+export const getCalculators = async (): Promise<CalculatorConfig[]> => {
+  const response = await calculatorApi.getUserCalculators();
+  return response as CalculatorConfig[];
 };
 
-export const getCalculator = (id: string): CalculatorConfig | undefined => {
-  const calculators = getCalculators();
-  return calculators.find(calc => calc.id === id);
-};
-
-export const updateCalculator = (id: string, config: Partial<CalculatorConfig>): CalculatorConfig | undefined => {
-  const calculators = getCalculators();
-  const index = calculators.findIndex(calc => calc.id === id);
-  
-  if (index === -1) return undefined;
-
-  const updatedCalculator = {
-    ...calculators[index],
-    ...config,
-    updatedAt: new Date().toISOString(),
-  };
-
-  calculators[index] = updatedCalculator;
-  localStorage.setItem('calculators', JSON.stringify(calculators));
-
-  return updatedCalculator;
-};
-
-export const deleteCalculator = (id: string): boolean => {
-  const calculators = getCalculators();
-  const filteredCalculators = calculators.filter(calc => calc.id !== id);
-  
-  if (filteredCalculators.length === calculators.length) {
-    return false;
+export const getCalculator = async (id: string): Promise<CalculatorConfig | undefined> => {
+  try {
+    const response = await calculatorApi.getCalculator(id);
+    return response as CalculatorConfig;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return undefined;
+    }
+    throw error;
   }
+};
 
-  localStorage.setItem('calculators', JSON.stringify(filteredCalculators));
-  return true;
+export const updateCalculator = async (id: string, config: Partial<CalculatorConfig>): Promise<CalculatorConfig | undefined> => {
+  try {
+    const response = await calculatorApi.updateCalculator(id, config);
+    return response as CalculatorConfig;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return undefined;
+    }
+    throw error;
+  }
+};
+
+export const deleteCalculator = async (id: string): Promise<boolean> => {
+  try {
+    await calculatorApi.deleteCalculator(id);
+    return true;
+  } catch (error: any) {
+    if (error?.response?.status === 404) {
+      return false;
+    }
+    throw error;
+  }
 };

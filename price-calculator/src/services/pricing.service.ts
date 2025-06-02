@@ -29,7 +29,7 @@ export interface Quote {
 
 class PricingService {
   private static instance: PricingService;
-  private readonly API_URL = "http://localhost:5001/api/pricing"; // Assuming pricing service runs on port 5001
+  private readonly API_URL = "http://localhost:3000/api/pricing"; // Assuming pricing service runs on port 5001
 
   private constructor() {}
 

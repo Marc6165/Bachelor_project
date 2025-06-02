@@ -31,6 +31,7 @@ export function LoginPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<AuthFormData>({
     email: "",
     password: "",
@@ -42,6 +43,7 @@ export function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError(null);
 
     try {
       if (isRegistering) {
@@ -63,11 +65,12 @@ export function LoginPage() {
         window.location.href = from;
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Authentication failed";
+      setError(errorMessage);
       toast({
         variant: "destructive",
         title: "Error",
-        description:
-          error instanceof Error ? error.message : "Authentication failed",
+        description: errorMessage,
       });
     } finally {
       setIsLoading(false);
@@ -85,6 +88,7 @@ export function LoginPage() {
   const toggleMode = () => {
     setIsRegistering(!isRegistering);
     setFormData({ email: "", password: "" });
+    setError(null);
   };
 
   return (
@@ -100,6 +104,11 @@ export function LoginPage() {
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
+            {error && (
+              <div data-testid="error-message" className="text-red-500 text-sm">
+                {error}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -125,7 +134,7 @@ export function LoginPage() {
               />
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
+          <CardFooter className="flex flex-col space-y-2">
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading
                 ? isRegistering

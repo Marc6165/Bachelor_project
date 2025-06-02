@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Card,
   CardHeader,
@@ -6,7 +7,7 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "../components/ui/card";
+} from "../components/ui/Card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import {
@@ -16,151 +17,20 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from "../components/ui/table";
+} from "../components/ui/Table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
+import { useToast } from "../components/ui/use-toast";
+import { quoteRequestService, type QuoteRequest } from "../services/quote-request.service";
+import { authService } from "../services/auth.service";
+import { invoiceService } from "../services/invoice.service";
 
-const initialPendingQuotes = [
-  {
-    id: 1,
-    status: "Pending",
-    email: "ken99@example.com",
-    amount: 316,
-    service: "Window Cleaning",
-    address: "Kongensgade 36B, 1",
-    city: "Odense C, 5000",
-    customerType: "Private",
-    name: "Marcus",
-    zip: "5000",
-    phone: "12341234",
-    note: "-",
-    floor: "Ground floor",
-    cleaningType: "Exterior",
-    stormWindows: "No",
-    windows: "5 pcs.",
-    servicePlan: "Subscription",
-    frequency: "Every 4 weeks",
-    estimatedPrice: 99,
-  },
-  {
-    id: 2,
-    status: "Pending",
-    email: "abe45@example.com",
-    amount: 242,
-    service: "Window Cleaning",
-    address: "Præstevænget 58",
-    city: "Nyborg, 5800",
-    customerType: "Private",
-    name: "Anna",
-    zip: "5800",
-    phone: "23452345",
-    note: "-",
-    floor: "First floor",
-    cleaningType: "Interior",
-    stormWindows: "Yes",
-    windows: "8 pcs.",
-    servicePlan: "One-time",
-    frequency: "-",
-    estimatedPrice: 242,
-  },
-  {
-    id: 3,
-    status: "Pending",
-    email: "larsen@example.com",
-    amount: 410,
-    service: "Facade Cleaning",
-    address: "Bredgade 12",
-    city: "Aalborg, 9000",
-  },
-  {
-    id: 4,
-    status: "Pending",
-    email: "sara.jensen@example.com",
-    amount: 199,
-    service: "Window Cleaning",
-    address: "Parkvej 7",
-    city: "Esbjerg, 6700",
-  },
-  {
-    id: 5,
-    status: "Pending",
-    email: "mads@example.com",
-    amount: 555,
-    service: "Facade Cleaning",
-    address: "Hovedgaden 1",
-    city: "Randers, 8900",
-  },
-];
-
-const initialQuoteHistory = [
-  {
-    id: 6,
-    status: "Accepted",
-    email: "abe45@example.com",
-    amount: 493,
-    service: "Window Cleaning",
-    address: "Strandvejen 52",
-    city: "Nyborg, 5000",
-  },
-  {
-    id: 7,
-    status: "Accepted",
-    email: "jensras12@example.com",
-    amount: 337,
-    service: "Window Cleaning",
-    address: "Perlestikkergade 53",
-    city: "Nakskov, 4900",
-  },
-  {
-    id: 8,
-    status: "Dismissed",
-    email: "mettehe99@example.com",
-    amount: 152,
-    service: "Window Cleaning",
-    address: "Vestergade 59, 3 Th",
-    city: "Aarhus C, 7000",
-  },
-  {
-    id: 9,
-    status: "Accepted",
-    email: "cf@example.com",
-    amount: 912,
-    service: "Window Cleaning",
-    address: "Nørregade 102, St Th",
-    city: "København NV, 2400",
-  },
-  {
-    id: 10,
-    status: "Accepted",
-    email: "larsen@example.com",
-    amount: 410,
-    service: "Facade Cleaning",
-    address: "Bredgade 12",
-    city: "Aalborg, 9000",
-  },
-  {
-    id: 11,
-    status: "Dismissed",
-    email: "sara.jensen@example.com",
-    amount: 199,
-    service: "Window Cleaning",
-    address: "Parkvej 7",
-    city: "Esbjerg, 6700",
-  },
-  {
-    id: 12,
-    status: "Accepted",
-    email: "mads@example.com",
-    amount: 555,
-    service: "Facade Cleaning",
-    address: "Hovedgaden 1",
-    city: "Randers, 8900",
-  },
-];
+type SortKey = "email" | "amount";
+type SortOrder = "asc" | "desc";
 
 const statusColor = (status: string) => {
   if (status === "Accepted") return "text-green-600";
@@ -169,112 +39,273 @@ const statusColor = (status: string) => {
   return "text-gray-500";
 };
 
-type SortKey = "email" | "amount";
-type SortOrder = "asc" | "desc";
-
-type Quote = (typeof initialPendingQuotes)[number];
-
 const QuotesPage = () => {
-  // State for pending quotes
-  const [pendingQuotes, setPendingQuotes] = useState(initialPendingQuotes);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  // State for quotes
+  const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // State for filters and sorting
   const [pendingFilter, setPendingFilter] = useState("");
+  const [historyFilter, setHistoryFilter] = useState("");
   const [pendingSort, setPendingSort] = useState<{
     key: SortKey;
     order: SortOrder;
   }>({ key: "email", order: "asc" });
-  const [pendingSelected, setPendingSelected] = useState<number[]>([]);
-
-  // State for quote history
-  const [quoteHistory, setQuoteHistory] = useState(initialQuoteHistory);
-  const [historyFilter, setHistoryFilter] = useState("");
   const [historySort, setHistorySort] = useState<{
     key: SortKey;
     order: SortOrder;
   }>({ key: "email", order: "asc" });
-  const [historySelected, setHistorySelected] = useState<number[]>([]);
+
+  // State for selection
+  const [pendingSelected, setPendingSelected] = useState<string[]>([]);
+  const [historySelected, setHistorySelected] = useState<string[]>([]);
 
   // Review modal state
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [reviewQuote, setReviewQuote] = useState<Quote | null>(null);
+  const [reviewQuote, setReviewQuote] = useState<QuoteRequest | null>(null);
   const [adjustedPrice, setAdjustedPrice] = useState("");
   const [customerMsg, setCustomerMsg] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedQuote, setEditedQuote] = useState<Partial<QuoteRequest>>({});
 
-  // Filtering
-  const filteredPending = pendingQuotes.filter((q) =>
+  // Fetch quotes
+  useEffect(() => {
+    // Check authentication
+    if (!authService.isAuthenticated()) {
+      console.log('User not authenticated, redirecting to login');
+      navigate('/login');
+      return;
+    }
+
+    const fetchQuotes = async () => {
+      try {
+        const response = await quoteRequestService.getQuoteRequests(currentPage);
+        console.log('Raw quote requests response:', response);
+        setQuotes(response.quotes);
+        setTotalPages(response.pagination.pages);
+      } catch (error) {
+        console.error("Error fetching quotes:", error);
+        // Check if the error is due to authentication
+        if (error instanceof Error && error.message.includes('token')) {
+          console.log('Authentication error, redirecting to login');
+          authService.logout(); // Clear invalid token
+          navigate('/login');
+          return;
+        }
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load quotes",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchQuotes();
+  }, [toast, currentPage, navigate]);
+
+  // Filter quotes
+  const pendingQuotes = quotes.filter(q => 
+    q.status === 'Pending' && 
     q.email.toLowerCase().includes(pendingFilter.toLowerCase())
   );
-  const filteredHistory = quoteHistory.filter((q) =>
+
+  const quoteHistory = quotes.filter(q => 
+    q.status !== 'Pending' && 
     q.email.toLowerCase().includes(historyFilter.toLowerCase())
   );
 
   // Sorting
-  const sortFn = (key: SortKey, order: SortOrder) => (a: Quote, b: Quote) => {
+  const sortFn = (key: SortKey, order: SortOrder) => (a: QuoteRequest, b: QuoteRequest) => {
     if (key === "amount") {
-      return order === "asc" ? a.amount - b.amount : b.amount - a.amount;
+      return order === "asc" ? a.estimatedPrice - b.estimatedPrice : b.estimatedPrice - a.estimatedPrice;
     }
     // email
     return order === "asc"
       ? a.email.localeCompare(b.email)
       : b.email.localeCompare(a.email);
   };
-  const sortedPending = [...filteredPending].sort(
+
+  const sortedPending = [...pendingQuotes].sort(
     sortFn(pendingSort.key, pendingSort.order)
   );
-  const sortedHistory = [...filteredHistory].sort(
+  const sortedHistory = [...quoteHistory].sort(
     sortFn(historySort.key, historySort.order)
   );
 
   // Selection
-  const togglePendingSelect = (id: number) => {
+  const togglePendingSelect = (id: string) => {
     setPendingSelected((sel) =>
       sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]
     );
   };
-  const toggleHistorySelect = (id: number) => {
+  const toggleHistorySelect = (id: string) => {
     setHistorySelected((sel) =>
       sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id]
     );
   };
   const allPendingSelected =
     sortedPending.length > 0 &&
-    sortedPending.every((q) => pendingSelected.includes(q.id));
+    sortedPending.every((q) => pendingSelected.includes(q._id || q.id!));
   const allHistorySelected =
     sortedHistory.length > 0 &&
-    sortedHistory.every((q) => historySelected.includes(q.id));
+    sortedHistory.every((q) => historySelected.includes(q._id || q.id!));
   const toggleAllPending = () => {
     setPendingSelected(
-      allPendingSelected ? [] : sortedPending.map((q) => q.id)
+      allPendingSelected ? [] : sortedPending.map((q) => q._id || q.id!)
     );
   };
   const toggleAllHistory = () => {
     setHistorySelected(
-      allHistorySelected ? [] : sortedHistory.map((q) => q.id)
+      allHistorySelected ? [] : sortedHistory.map((q) => q._id || q.id!)
     );
   };
 
   // Actions
-  const handleAccept = (id: number) => {
-    setPendingQuotes((quotes) =>
-      quotes.map((q) => (q.id === id ? { ...q, status: "Accepted" } : q))
-    );
-    setQuoteHistory((history) => [
-      ...history,
-      { ...pendingQuotes.find((q) => q.id === id)!, status: "Accepted" },
-    ]);
+  const handleAccept = async (id: string) => {
+    try {
+      await quoteRequestService.updateQuoteRequest(id, { status: 'Accepted' });
+      setQuotes(quotes => 
+        quotes.map(q => {
+          // Only update if either _id or id matches exactly
+          const matchesId = (q._id && q._id === id) || (q.id && q.id === id);
+          return matchesId ? { ...q, status: 'Accepted' } : q;
+        })
+      );
+      toast({
+        title: "Quote accepted",
+        description: "The quote has been accepted successfully.",
+      });
+    } catch (error) {
+      console.error('Error accepting quote:', error);
+      if (error instanceof Error && error.message.includes('token')) {
+        console.log('Authentication error, redirecting to login');
+        authService.logout();
+        navigate('/login');
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to accept quote",
+      });
+    }
   };
-  const handleReview = (id: number) => {
-    const q = pendingQuotes.find((q) => q.id === id);
-    if (q) {
-      setReviewQuote(q);
-      setAdjustedPrice(q.amount.toString());
-      setCustomerMsg("");
+
+  const handleDismiss = async (id: string) => {
+    try {
+      await quoteRequestService.updateQuoteRequest(id, { status: 'Dismissed' });
+      setQuotes(quotes => 
+        quotes.map(q => {
+          // Only update if either _id or id matches exactly
+          const matchesId = (q._id && q._id === id) || (q.id && q.id === id);
+          return matchesId ? { ...q, status: 'Dismissed' } : q;
+        })
+      );
+      toast({
+        title: "Quote dismissed",
+        description: "The quote has been dismissed successfully.",
+      });
+    } catch (error) {
+      console.error('Error dismissing quote:', error);
+      if (error instanceof Error && error.message.includes('token')) {
+        console.log('Authentication error, redirecting to login');
+        authService.logout();
+        navigate('/login');
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to dismiss quote",
+      });
+    }
+  };
+
+  const handleReview = (id: string) => {
+    const quote = quotes.find(q => q._id === id || q.id === id);
+    if (quote) {
+      setReviewQuote(quote);
+      setEditedQuote({});
+      setIsEditing(false);
       setReviewOpen(true);
     }
   };
-  const handleViewDetails = (id: number) => {
-    const q = quoteHistory.find((q) => q.id === id);
-    alert(`Viewing details for ${q?.email}`);
+
+  const handleViewDetails = (id: string) => {
+    const quote = quotes.find(q => q._id === id || q.id === id);
+    if (quote) {
+      setReviewQuote(quote);
+      setEditedQuote({});
+      setIsEditing(false);
+      setReviewOpen(true);
+    }
   };
+
+  const handleEditQuote = (id: string) => {
+    const quote = quotes.find(q => q._id === id || q.id === id);
+    if (quote) {
+      setReviewQuote(quote);
+      setEditedQuote({
+        customerType: quote.customerType,
+        name: quote.name,
+        email: quote.email,
+        phone: quote.phone,
+        address: quote.address,
+        city: quote.city,
+        zip: quote.zip,
+        note: quote.note || '',
+        service: quote.service,
+        estimatedPrice: quote.estimatedPrice,
+      });
+      setIsEditing(true);
+      setReviewOpen(true);
+    }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!reviewQuote) return;
+    
+    try {
+      const quoteId = reviewQuote._id || reviewQuote.id!;
+      await quoteRequestService.updateQuoteRequest(quoteId, editedQuote);
+      
+      setQuotes(quotes => 
+        quotes.map(q => {
+          // Only update if either _id or id matches exactly
+          const matchesId = (q._id && q._id === quoteId) || (q.id && q.id === quoteId);
+          return matchesId ? { ...q, ...editedQuote } : q;
+        })
+      );
+      
+      setReviewOpen(false);
+      setIsEditing(false);
+      toast({
+        title: "Quote updated",
+        description: "The quote has been updated successfully.",
+      });
+    } catch (error) {
+      console.error('Error updating quote:', error);
+      if (error instanceof Error && error.message.includes('token')) {
+        console.log('Authentication error, redirecting to login');
+        authService.logout();
+        navigate('/login');
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update quote",
+      });
+    }
+  };
+
   const handleSort = (table: "pending" | "history", key: SortKey) => {
     if (table === "pending") {
       setPendingSort((s) =>
@@ -292,511 +323,680 @@ const QuotesPage = () => {
   };
 
   // Handle adjust quote
-  const handleAdjustQuote = () => {
+  const handleAdjustQuote = async () => {
     if (!reviewQuote) return;
-    setPendingQuotes((quotes) =>
-      quotes.map((q) =>
-        q.id === reviewQuote.id
-          ? { ...q, status: "Waiting", amount: Number(adjustedPrice) }
-          : q
-      )
-    );
-    setReviewOpen(false);
-    // Simulate sending message to customer
-    setTimeout(() => {
-      alert(
-        `Message sent to ${reviewQuote.email}:\n\nYour quote has been adjusted to DKK ${adjustedPrice}.\n${customerMsg}`
+    
+    try {
+      const quoteId = reviewQuote._id || reviewQuote.id!;
+      await quoteRequestService.updateQuoteRequest(quoteId, {
+        status: 'Waiting',
+        estimatedPrice: Number(adjustedPrice)
+      });
+      
+      setQuotes(quotes => 
+        quotes.map(q => {
+          // Only update if either _id or id matches exactly
+          const matchesId = (q._id && q._id === quoteId) || (q.id && q.id === quoteId);
+          return matchesId ? { ...q, status: 'Waiting', estimatedPrice: Number(adjustedPrice) } : q;
+        })
       );
-    }, 300);
+      
+    setReviewOpen(false);
+      toast({
+        title: "Quote adjusted",
+        description: `Quote for ${reviewQuote.email} has been adjusted to DKK ${adjustedPrice}.`,
+      });
+    } catch (error) {
+      console.error('Error adjusting quote:', error);
+      if (error instanceof Error && error.message.includes('token')) {
+        console.log('Authentication error, redirecting to login');
+        authService.logout();
+        navigate('/login');
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to adjust quote",
+      });
+    }
+  };
+
+  const handleSendInvoice = async (quote: QuoteRequest) => {
+    try {
+      // Create customer details from quote data
+      const customerDetails = {
+        name: quote.name,
+        email: quote.email,
+        address: {
+          street: quote.address,
+          city: quote.city,
+          state: "Denmark",
+          zipCode: quote.zip,
+          country: "Denmark"
+        }
+      };
+
+      // Create the invoice
+      const invoice = await invoiceService.createInvoice({
+        quoteId: quote._id || quote.id!,
+        customerDetails
+      });
+
+      toast({
+        title: "Invoice Sent",
+        description: `Invoice has been generated and sent to ${quote.email}`,
+      });
+    } catch (error) {
+      console.error('Error sending invoice:', error);
+      if (error instanceof Error && error.message.includes('token')) {
+        console.log('Authentication error, redirecting to login');
+        authService.logout();
+        navigate('/login');
+        return;
+      }
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to send invoice",
+      });
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Review Modal */}
-        <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
-          <DialogContent className="max-w-md w-full p-0 bg-white/90 backdrop-blur-xl max-h-[80vh] overflow-y-auto">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleAdjustQuote();
-              }}
-            >
-              <DialogHeader className="px-6 pt-6">
-                <DialogTitle>Review Quote</DialogTitle>
-              </DialogHeader>
-              <div className="px-6 pb-2 space-y-6">
-                {/* Contact Information */}
-                <div>
-                  <div className="font-semibold mb-2 flex items-center gap-2">
-                    <span role="img" aria-label="contact">
-                      👤
-                    </span>{" "}
-                    Contact Information
-                  </div>
-                  <table className="w-full text-sm mb-2">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="font-medium text-left px-2 py-1 w-1/3">
-                          Field
-                        </th>
-                        <th className="font-medium text-left px-2 py-1">
-                          Details
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="px-2 py-1">Customer Type</td>
-                        <td className="px-2 py-1">
-                          {reviewQuote?.customerType}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Name</td>
-                        <td className="px-2 py-1">{reviewQuote?.name}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Address</td>
-                        <td className="px-2 py-1">{reviewQuote?.address}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">City</td>
-                        <td className="px-2 py-1">{reviewQuote?.city}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Zip Code</td>
-                        <td className="px-2 py-1">{reviewQuote?.zip}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Phone</td>
-                        <td className="px-2 py-1">{reviewQuote?.phone}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Email</td>
-                        <td className="px-2 py-1">
-                          <a
-                            href={`mailto:${reviewQuote?.email}`}
-                            className="text-blue-600 underline"
-                          >
-                            {reviewQuote?.email}
-                          </a>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Note</td>
-                        <td className="px-2 py-1">{reviewQuote?.note}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                {/* Quote Details */}
-                <div>
-                  <div className="font-semibold mb-2 flex items-center gap-2">
-                    <span role="img" aria-label="quote">
-                      📋
-                    </span>{" "}
-                    Quote Details
-                  </div>
-                  <table className="w-full text-sm mb-2">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        <th className="font-medium text-left px-2 py-1 w-1/3">
-                          Aspect
-                        </th>
-                        <th className="font-medium text-left px-2 py-1">
-                          Details
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="px-2 py-1">Floor(s)</td>
-                        <td className="px-2 py-1">{reviewQuote?.floor}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Cleaning Type</td>
-                        <td className="px-2 py-1">
-                          {reviewQuote?.cleaningType}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Storm Windows</td>
-                        <td className="px-2 py-1">
-                          {reviewQuote?.stormWindows}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Windows</td>
-                        <td className="px-2 py-1">{reviewQuote?.windows}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Service Plan</td>
-                        <td className="px-2 py-1">
-                          {reviewQuote?.servicePlan}
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Frequency</td>
-                        <td className="px-2 py-1">{reviewQuote?.frequency}</td>
-                      </tr>
-                      <tr>
-                        <td className="px-2 py-1">Estimated Price</td>
-                        <td className="px-2 py-1">
-                          {reviewQuote?.estimatedPrice} DKK
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className="flex justify-center">
-                  <a
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      reviewQuote?.address || ""
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block text-blue-600 border border-blue-600 rounded px-4 py-1 text-sm hover:bg-blue-50 transition"
-                  >
-                    View on Google Maps
-                  </a>
-                </div>
-                {/* Adjust price and message */}
-                <div className="bg-gray-100 rounded p-4 space-y-3">
-                  <label className="block text-sm font-medium mb-1">
-                    Adjust price (DKK):
-                    <Input
-                      type="number"
-                      min={0}
-                      value={adjustedPrice}
-                      onChange={(e) => setAdjustedPrice(e.target.value)}
-                      className="mt-1"
-                    />
-                  </label>
-                  <label className="block text-sm font-medium mb-1">
-                    Message to customer:
-                    <textarea
-                      className="w-full mt-1 rounded border border-gray-300 p-2 text-sm"
-                      rows={3}
-                      placeholder="Write a short note..."
-                      value={customerMsg}
-                      onChange={(e) => setCustomerMsg(e.target.value)}
-                    />
-                  </label>
-                  <Button type="submit" className="w-full mt-2">
-                    Adjust Quote
-                  </Button>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full mt-4"
-                  onClick={() => window.open(`tel:${reviewQuote?.phone}`)}
-                >
-                  Call Customer
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
+    <div className="container mx-auto py-4 sm:py-8 px-2 sm:px-4 space-y-4 sm:space-y-8">
         {/* Pending Quotes */}
         <Card>
           <CardHeader>
-            <CardTitle>Pending Quotes</CardTitle>
-            <CardDescription>Manage your qoutes</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Pending Quotes</CardTitle>
+            <CardDescription>Manage your quotes</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center mb-2 space-x-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center mb-4 space-y-2 sm:space-y-0 sm:space-x-2">
               <Input
                 placeholder="Filter emails..."
-                className="w-64"
+                className="w-full sm:w-64"
                 value={pendingFilter}
                 onChange={(e) => setPendingFilter(e.target.value)}
               />
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center space-x-1"
-                onClick={() => alert("Column picker coming soon!")}
-              >
-                <span>Columns</span>
-                <svg
-                  className="w-4 h-4 ml-1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <input
-                      type="checkbox"
-                      checked={allPendingSelected}
-                      onChange={toggleAllPending}
-                    />
-                  </TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>
-                    <button
-                      className="flex items-center gap-1"
-                      onClick={() => handleSort("pending", "email")}
-                    >
-                      Email
-                      <span className="inline-block align-middle">
-                        ⇅
-                        {pendingSort.key === "email"
-                          ? pendingSort.order === "asc"
-                            ? "▲"
-                            : "▼"
-                          : ""}
-                      </span>
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      className="flex items-center gap-1"
-                      onClick={() => handleSort("pending", "amount")}
-                    >
-                      Amount
-                      <span className="inline-block align-middle">
-                        ⇅
-                        {pendingSort.key === "amount"
-                          ? pendingSort.order === "asc"
-                            ? "▲"
-                            : "▼"
-                          : ""}
-                      </span>
-                    </button>
-                  </TableHead>
-                  <TableHead>Service</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>City</TableHead>
-                  <TableHead>Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedPending.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={pendingSelected.includes(row.id)}
-                        onChange={() => togglePendingSelect(row.id)}
-                      />
-                    </TableCell>
-                    <TableCell className="text-gray-500">
-                      {row.status}
-                    </TableCell>
-                    <TableCell>{row.email}</TableCell>
-                    <TableCell className="font-semibold">
-                      DKK {row.amount.toFixed(2)}{" "}
-                      <span className="text-gray-400">•••</span>
-                    </TableCell>
-                    <TableCell>{row.service}</TableCell>
-                    <TableCell>{row.address}</TableCell>
-                    <TableCell>{row.city}</TableCell>
-                    <TableCell className="space-x-2">
-                      {row.status === "Pending" && (
-                        <Button size="sm" onClick={() => handleAccept(row.id)}>
-                          Accept
-                        </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleReview(row.id)}
-                      >
-                        Review
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {sortedPending.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="text-center text-gray-400"
-                    >
-                      No quotes found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[40px]">
+                        <input
+                          type="checkbox"
+                          checked={allPendingSelected}
+                          onChange={toggleAllPending}
+                        />
+                      </TableHead>
+                      <TableHead className="whitespace-nowrap">Status</TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        <button
+                          className="flex items-center gap-1"
+                          onClick={() => handleSort("pending", "email")}
+                        >
+                          Email
+                          <span className="inline-block align-middle">
+                            ⇅
+                            {pendingSort.key === "email"
+                              ? pendingSort.order === "asc"
+                                ? "▲"
+                                : "▼"
+                              : ""}
+                          </span>
+                        </button>
+                      </TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        <button
+                          className="flex items-center gap-1"
+                          onClick={() => handleSort("pending", "amount")}
+                        >
+                          Amount
+                          <span className="inline-block align-middle">
+                            ⇅
+                            {pendingSort.key === "amount"
+                              ? pendingSort.order === "asc"
+                                ? "▲"
+                                : "▼"
+                              : ""}
+                          </span>
+                        </button>
+                      </TableHead>
+                      <TableHead className="hidden sm:table-cell whitespace-nowrap">Service</TableHead>
+                      <TableHead className="hidden sm:table-cell whitespace-nowrap">Address</TableHead>
+                      <TableHead className="hidden sm:table-cell whitespace-nowrap">City</TableHead>
+                      <TableHead className="whitespace-nowrap">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-4">
+                        Loading...
+                      </TableCell>
+                    </TableRow>
+                  ) : sortedPending.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center text-gray-400">
+                        No quotes found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    sortedPending.map((quote) => (
+                      <TableRow key={quote._id || quote.id}>
+                        <TableCell className="w-[40px]">
+                          <input
+                            type="checkbox"
+                            checked={pendingSelected.includes(quote._id || quote.id!)}
+                            onChange={() => togglePendingSelect(quote._id || quote.id!)}
+                          />
+                        </TableCell>
+                        <TableCell className="text-gray-500 whitespace-nowrap">
+                          {quote.status}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">{quote.email}</TableCell>
+                        <TableCell className="font-semibold whitespace-nowrap">
+                          DKK {quote.estimatedPrice.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{quote.service}</TableCell>
+                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{quote.address}</TableCell>
+                        <TableCell className="hidden sm:table-cell whitespace-nowrap">{quote.city}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <Button
+                              size="sm"
+                              className="w-full sm:w-auto"
+                              onClick={() => handleAccept(quote._id || quote.id!)}
+                            >
+                              Accept
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full sm:w-auto"
+                              onClick={() => handleDismiss(quote._id || quote.id!)}
+                            >
+                              Dismiss
+                            </Button>
+                            <div className="hidden sm:flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleReview(quote._id || quote.id!)}
+                              >
+                                Review
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditQuote(quote._id || quote.id!)}
+                              >
+                                Edit
+                              </Button>
+                              {quote.status === 'Accepted' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleSendInvoice(quote)}
+                                >
+                                  Send Invoice
+                                </Button>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="sm:hidden w-full"
+                              onClick={() => handleReview(quote._id || quote.id!)}
+                            >
+                              More Actions
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </CardContent>
-          <CardFooter className="justify-between text-xs text-gray-500 bg-gray-50 rounded-b-lg">
+          <CardFooter className="flex flex-col sm:flex-row justify-between items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-b-lg p-2 sm:p-4">
             <span>
-              {pendingSelected.length} of {sortedPending.length} row(s)
-              selected.
+              {pendingSelected.length} of {sortedPending.length} row(s) selected.
             </span>
-            <div>
-              <Button variant="outline" size="sm" className="mr-2" disabled>
-                Previous
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                Next
-              </Button>
-            </div>
+            {totalPages > 1 && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1 || isLoading}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full sm:w-auto"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages || isLoading}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </CardFooter>
         </Card>
 
         {/* Quote History */}
         <Card>
           <CardHeader>
-            <CardTitle>Quote History</CardTitle>
-            <CardDescription>Keep track of previous qoutes</CardDescription>
+            <CardTitle className="text-lg sm:text-xl">Quote History</CardTitle>
+            <CardDescription>Keep track of previous quotes</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center mb-2 space-x-2">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center mb-4 space-y-2 sm:space-y-0 sm:space-x-2">
               <Input
                 placeholder="Filter emails..."
-                className="w-64"
+                className="w-full sm:w-64"
                 value={historyFilter}
                 onChange={(e) => setHistoryFilter(e.target.value)}
               />
-              <Button
-                variant="outline"
-                size="sm"
-                className="flex items-center space-x-1"
-                onClick={() => alert("Column picker coming soon!")}
-              >
-                <span>Columns</span>
-                <svg
-                  className="w-4 h-4 ml-1"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <input
-                      type="checkbox"
-                      checked={allHistorySelected}
-                      onChange={toggleAllHistory}
-                    />
-                  </TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>
-                    <button
-                      className="flex items-center gap-1"
-                      onClick={() => handleSort("history", "email")}
-                    >
-                      Email
-                      <span className="inline-block align-middle">
-                        ⇅
-                        {historySort.key === "email"
-                          ? historySort.order === "asc"
-                            ? "▲"
-                            : "▼"
-                          : ""}
-                      </span>
-                    </button>
-                  </TableHead>
-                  <TableHead>
-                    <button
-                      className="flex items-center gap-1"
-                      onClick={() => handleSort("history", "amount")}
-                    >
-                      Amount
-                      <span className="inline-block align-middle">
-                        ⇅
-                        {historySort.key === "amount"
-                          ? historySort.order === "asc"
-                            ? "▲"
-                            : "▼"
-                          : ""}
-                      </span>
-                    </button>
-                  </TableHead>
-                  <TableHead>Service</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>City</TableHead>
-                  <TableHead>Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedHistory.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={historySelected.includes(row.id)}
-                        onChange={() => toggleHistorySelect(row.id)}
-                      />
-                    </TableCell>
-                    <TableCell className={statusColor(row.status)}>
-                      {row.status}
-                    </TableCell>
-                    <TableCell>{row.email}</TableCell>
-                    <TableCell className="font-semibold">
-                      DKK {row.amount.toFixed(2)}{" "}
-                      <span className="text-gray-400">•••</span>
-                    </TableCell>
-                    <TableCell>{row.service}</TableCell>
-                    <TableCell>{row.address}</TableCell>
-                    <TableCell>{row.city}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewDetails(row.id)}
-                      >
-                        View details
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {sortedHistory.length === 0 && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={8}
-                      className="text-center text-gray-400"
-                    >
-                      No quotes found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[40px]">
+                        <input
+                          type="checkbox"
+                          checked={allHistorySelected}
+                          onChange={toggleAllHistory}
+                        />
+                      </TableHead>
+                      <TableHead className="whitespace-nowrap">Status</TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        <button
+                          className="flex items-center gap-1"
+                          onClick={() => handleSort("history", "email")}
+                        >
+                          Email
+                          <span className="inline-block align-middle">
+                            ⇅
+                            {historySort.key === "email"
+                              ? historySort.order === "asc"
+                                ? "▲"
+                                : "▼"
+                              : ""}
+                          </span>
+                        </button>
+                      </TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        <button
+                          className="flex items-center gap-1"
+                          onClick={() => handleSort("history", "amount")}
+                        >
+                          Amount
+                          <span className="inline-block align-middle">
+                            ⇅
+                            {historySort.key === "amount"
+                              ? historySort.order === "asc"
+                                ? "▲"
+                                : "▼"
+                              : ""}
+                          </span>
+                        </button>
+                      </TableHead>
+                      <TableHead className="hidden sm:table-cell whitespace-nowrap">Service</TableHead>
+                      <TableHead className="hidden sm:table-cell whitespace-nowrap">Address</TableHead>
+                      <TableHead className="hidden sm:table-cell whitespace-nowrap">City</TableHead>
+                      <TableHead className="whitespace-nowrap">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-4">
+                          Loading...
+                        </TableCell>
+                      </TableRow>
+                    ) : sortedHistory.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center text-gray-400">
+                          No quotes found.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      sortedHistory.map((quote) => (
+                        <TableRow key={quote._id || quote.id}>
+                          <TableCell className="w-[40px]">
+                            <input
+                              type="checkbox"
+                              checked={historySelected.includes(quote._id || quote.id!)}
+                              onChange={() => toggleHistorySelect(quote._id || quote.id!)}
+                            />
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">
+                            <span className={statusColor(quote.status)}>
+                              {quote.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap">{quote.email}</TableCell>
+                          <TableCell className="font-semibold whitespace-nowrap">
+                            DKK {quote.estimatedPrice.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell whitespace-nowrap">{quote.service}</TableCell>
+                          <TableCell className="hidden sm:table-cell whitespace-nowrap">{quote.address}</TableCell>
+                          <TableCell className="hidden sm:table-cell whitespace-nowrap">{quote.city}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col sm:flex-row gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-full sm:w-auto"
+                                onClick={() => handleViewDetails(quote._id || quote.id!)}
+                              >
+                                View Details
+                              </Button>
+                              <div className="hidden sm:flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEditQuote(quote._id || quote.id!)}
+                                >
+                                  Edit
+                                </Button>
+                                {quote.status === 'Accepted' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSendInvoice(quote)}
+                                  >
+                                    Send Invoice
+                                  </Button>
+                                )}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="sm:hidden w-full"
+                                onClick={() => handleEditQuote(quote._id || quote.id!)}
+                              >
+                                Edit
+                              </Button>
+                              {quote.status === 'Accepted' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="sm:hidden w-full"
+                                  onClick={() => handleSendInvoice(quote)}
+                                >
+                                  Send Invoice
+                                </Button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
           </CardContent>
-          <CardFooter className="justify-between text-xs text-gray-500 bg-gray-50 rounded-b-lg">
-            <span>
-              {historySelected.length} of {sortedHistory.length} row(s)
-              selected.
-            </span>
-            <div>
-              <Button variant="outline" size="sm" className="mr-2" disabled>
-                Previous
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                Next
-              </Button>
-            </div>
-          </CardFooter>
         </Card>
-      </div>
+
+        {/* Review/Edit Modal */}
+        <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+          <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-lg sm:text-xl flex justify-between items-center">
+                <span>{isEditing ? 'Edit Quote' : 'Review Quote'}</span>
+                {!isEditing && reviewQuote?.status === 'Pending' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(true)}
+                    className="hidden sm:block"
+                  >
+                    Edit Details
+                  </Button>
+                )}
+              </DialogTitle>
+            </DialogHeader>
+            {reviewQuote && (
+              <div className="space-y-4 sm:space-y-6">
+                {/* Customer Information */}
+                <div>
+                  <div className="font-semibold mb-2 flex items-center gap-2">
+                    <span role="img" aria-label="user">👤</span>
+                    Customer Information
+                  </div>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Customer Type</label>
+                        {isEditing ? (
+                          <Input
+                            value={editedQuote.customerType || reviewQuote.customerType}
+                            onChange={(e) => setEditedQuote(prev => ({ ...prev, customerType: e.target.value }))}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="mt-1">{reviewQuote.customerType}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Name</label>
+                        {isEditing ? (
+                          <Input
+                            value={editedQuote.name || reviewQuote.name}
+                            onChange={(e) => setEditedQuote(prev => ({ ...prev, name: e.target.value }))}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="mt-1">{reviewQuote.name}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Address</label>
+                      {isEditing ? (
+                        <Input
+                          value={editedQuote.address || reviewQuote.address}
+                          onChange={(e) => setEditedQuote(prev => ({ ...prev, address: e.target.value }))}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="mt-1">{reviewQuote.address}</p>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">City</label>
+                        {isEditing ? (
+                          <Input
+                            value={editedQuote.city || reviewQuote.city}
+                            onChange={(e) => setEditedQuote(prev => ({ ...prev, city: e.target.value }))}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="mt-1">{reviewQuote.city}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Zip Code</label>
+                        {isEditing ? (
+                          <Input
+                            value={editedQuote.zip || reviewQuote.zip}
+                            onChange={(e) => setEditedQuote(prev => ({ ...prev, zip: e.target.value }))}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="mt-1">{reviewQuote.zip}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Phone</label>
+                        {isEditing ? (
+                          <Input
+                            value={editedQuote.phone || reviewQuote.phone}
+                            onChange={(e) => setEditedQuote(prev => ({ ...prev, phone: e.target.value }))}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <p className="mt-1">{reviewQuote.phone}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">Email</label>
+                        {isEditing ? (
+                          <Input
+                            value={editedQuote.email || reviewQuote.email}
+                            onChange={(e) => setEditedQuote(prev => ({ ...prev, email: e.target.value }))}
+                            className="mt-1"
+                          />
+                        ) : (
+                          <a
+                            href={`mailto:${reviewQuote.email}`}
+                            className="block mt-1 text-blue-600 underline"
+                          >
+                            {reviewQuote.email}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Note</label>
+                      {isEditing ? (
+                        <Input
+                          value={editedQuote.note || reviewQuote.note || ''}
+                          onChange={(e) => setEditedQuote(prev => ({ ...prev, note: e.target.value }))}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="mt-1">{reviewQuote.note || '-'}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Service Details */}
+                <div>
+                  <div className="font-semibold mb-2 flex items-center gap-2">
+                    <span role="img" aria-label="service">🛠️</span>
+                    Service Details
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Service Type</label>
+                      <p className="mt-1">{reviewQuote.service}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Status</label>
+                      <p className="mt-1">{reviewQuote.status}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-gray-500">Estimated Price</label>
+                      {isEditing ? (
+                        <Input
+                          type="number"
+                          value={editedQuote.estimatedPrice || reviewQuote.estimatedPrice}
+                          onChange={(e) => setEditedQuote(prev => ({ ...prev, estimatedPrice: Number(e.target.value) }))}
+                          className="mt-1"
+                        />
+                      ) : (
+                        <p className="mt-1">DKK {reviewQuote.estimatedPrice.toFixed(2)}</p>
+                      )}
+                    </div>
+                    {Object.entries(reviewQuote.parameters || {}).map(([key, value]) => (
+                      <div key={key}>
+                        <label className="text-sm font-medium text-gray-500">{key}</label>
+                        <p className="mt-1">{String(value)}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                {isEditing ? (
+                  <div className="flex flex-col sm:flex-row justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      className="w-full sm:w-auto"
+                      onClick={() => {
+                        setIsEditing(false);
+                        setEditedQuote({});
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="w-full sm:w-auto"
+                      onClick={handleSaveEdit}
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                ) : reviewQuote.status === 'Pending' && (
+                  <div>
+                    <div className="font-semibold mb-2 flex items-center gap-2">
+                      <span role="img" aria-label="price">💰</span>
+                      Price Adjustment
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Adjusted Price (DKK)
+                        </label>
+                        <Input
+                          type="number"
+                          value={adjustedPrice}
+                          onChange={(e) => setAdjustedPrice(e.target.value)}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-gray-500">
+                          Message to Customer
+                        </label>
+                        <Input
+                          value={customerMsg}
+                          onChange={(e) => setCustomerMsg(e.target.value)}
+                          className="mt-1"
+                          placeholder="Optional message explaining the adjustment..."
+                        />
+                      </div>
+                      <div className="flex flex-col sm:flex-row justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          className="w-full sm:w-auto"
+                          onClick={() => setReviewOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          className="w-full sm:w-auto"
+                          onClick={handleAdjustQuote}
+                        >
+                          Adjust Quote
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
     </div>
   );
 };

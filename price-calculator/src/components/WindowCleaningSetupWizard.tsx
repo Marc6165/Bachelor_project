@@ -13,10 +13,12 @@ const defaultFloorMultipliers = [1, 1.5, 1.8, 2.2, 3, 4, 4, 4, 4, 4, 4];
 
 interface WindowCleaningSetupWizardProps {
   hourlyWage: number;
+  disabled?: boolean;
 }
 
 const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
   hourlyWage,
+  disabled = false,
 }) => {
   const [maxFloor, setMaxFloor] = useState(3);
   const [interiorCleaning, setInteriorCleaning] = useState("yes");
@@ -102,6 +104,7 @@ const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
             className="w-full border rounded px-3 py-2 text-sm"
             value={maxFloor}
             onChange={(e) => setMaxFloor(Number(e.target.value))}
+            disabled={disabled}
           >
             {floorOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
@@ -118,6 +121,7 @@ const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
             className="w-full border rounded px-3 py-2 text-sm"
             value={interiorCleaning}
             onChange={(e) => setInteriorCleaning(e.target.value)}
+            disabled={disabled}
           >
             <option value="yes">Ja</option>
             <option value="no">Nej</option>
@@ -129,6 +133,7 @@ const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
             variant="outline"
             className="mt-2"
             onClick={() => setShowAdvanced((v) => !v)}
+            disabled={disabled}
           >
             Avancerede Indstillinger
           </Button>
@@ -149,6 +154,7 @@ const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
                   min={1}
                   value={minPrice}
                   onChange={(e) => setMinPrice(Number(e.target.value))}
+                  disabled={disabled}
                 />
               </div>
               <div>
@@ -163,6 +169,7 @@ const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
                   onChange={(e) =>
                     setInteriorMultiplier(Number(e.target.value))
                   }
+                  disabled={disabled}
                 />
               </div>
               <div>
@@ -174,6 +181,7 @@ const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
                   min={1}
                   value={minInteriorPrice}
                   onChange={(e) => setMinInteriorPrice(Number(e.target.value))}
+                  disabled={disabled}
                 />
               </div>
               <div>
@@ -188,6 +196,7 @@ const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
                   onChange={(e) =>
                     setSecondaryGlazingMultiplier(Number(e.target.value))
                   }
+                  disabled={disabled}
                 />
               </div>
               <div>
@@ -198,7 +207,7 @@ const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
                   {floorMultipliers.slice(0, maxFloor).map((mult, idx) => (
                     <div key={idx}>
                       <label className="text-xs">
-                        {idx === 0 ? "Stueetagen" : `${idx}. sal`}:
+                        {idx === 0 ? "Stueetage" : `${idx}. sal`}
                       </label>
                       <Input
                         type="number"
@@ -211,6 +220,7 @@ const WindowCleaningSetupWizard: React.FC<WindowCleaningSetupWizardProps> = ({
                             Number(e.target.value)
                           )
                         }
+                        disabled={disabled}
                       />
                     </div>
                   ))}

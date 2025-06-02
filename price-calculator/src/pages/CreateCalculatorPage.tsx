@@ -6,88 +6,43 @@ import {
   CardDescription,
   CardContent,
   CardFooter,
-} from "../components/ui/card";
+} from "../components/ui/Card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import WindowCleaningWizard from "../components/WindowCleaningWizard";
 import WindowCleaningSetupWizard from "../components/WindowCleaningSetupWizard";
+import { AreaBasedCalculator } from "../components/AreaBasedCalculator";
+import { HourlyCalculator } from "../components/HourlyCalculator";
+import { FixedPackageCalculator } from "../components/FixedPackageCalculator";
 import { saveCalculator } from "../features/calculator";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import type { CalculatorConfig } from "../features/calculator";
+
+// Only include the fields needed for creating a new calculator
+interface CreateCalculatorConfig {
+  type: string;
+  hourlyWage: number;
+  settings: Record<string, unknown>;
+}
 
 const calculators = [
   { label: "Window Cleaning Calculator", value: "window-cleaning" },
-  { label: "Time-based Calculator", value: "time-based" },
   { label: "Area-based Calculator", value: "area-based" },
-  { label: "Number of Windows Calculator", value: "number-of-windows" },
+  { label: "Hourly Calculator", value: "hourly" },
+  { label: "Fixed Package Calculator", value: "fixed-package" },
 ];
 
-function TimeBasedCalculator() {
-  return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>Time-based Calculator</CardTitle>
-        <CardDescription>
-          (Coming soon) Calculate price based on estimated time spent.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="text-gray-500">
-          This calculator will let you estimate price based on hours worked and
-          hourly wage.
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function AreaBasedCalculator() {
-  return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>Area-based Calculator</CardTitle>
-        <CardDescription>
-          (Coming soon) Calculate price based on area (m² or ft²).
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="text-gray-500">
-          This calculator will let you estimate price based on area and rate per
-          m²/ft².
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function NumberOfWindowsCalculator() {
-  return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>Number of Windows Calculator</CardTitle>
-        <CardDescription>
-          (Coming soon) Calculate price based only on the number of windows.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="text-gray-500">
-          This calculator will let you estimate price based on a fixed price per
-          window.
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-const CreateCalculatorPage = () => {
-  const navigate = useNavigate();
-  const [hourlyWage, setHourlyWage] = useState(300);
+export default function CreateCalculatorPage() {
   const [selectedCalc, setSelectedCalc] = useState(calculators[0].value);
+  const [hourlyWage, setHourlyWage] = useState(150);
   const [isCreating, setIsCreating] = useState(false);
+  const [createdCalculator, setCreatedCalculator] = useState<CalculatorConfig | null>(null);
+  const navigate = useNavigate();
 
   const handleCreateCalculator = async () => {
+    setIsCreating(true);
     try {
-      setIsCreating(true);
-
       // Get settings from WindowCleaningSetupWizard if it's selected
       let settings = {};
       if (selectedCalc === "window-cleaning") {
@@ -99,14 +54,20 @@ const CreateCalculatorPage = () => {
         }
       }
 
-      const calculator = saveCalculator({
+      const calculator = await saveCalculator({
         type: selectedCalc,
         hourlyWage,
         settings,
       });
 
+      if (!calculator || !calculator.id) {
+        throw new Error('Invalid calculator response from server');
+      }
+
+      setCreatedCalculator(calculator);
       toast.success("Calculator created successfully!");
-      navigate(`/embed/${calculator.id}`);
+      // Navigate to the calculator page
+      navigate(`/calculator/${calculator.id}`);
     } catch (error) {
       console.error("Error creating calculator:", error);
       toast.error("Failed to create calculator. Please try again.");
@@ -115,15 +76,34 @@ const CreateCalculatorPage = () => {
     }
   };
 
+  const renderCalculator = () => {
+    switch (selectedCalc) {
+      case "window-cleaning":
+        return (
+          <>
+            <WindowCleaningWizard />
+            <WindowCleaningSetupWizard hourlyWage={hourlyWage} disabled={isCreating} />
+          </>
+        );
+      case "area-based":
+        return <AreaBasedCalculator />;
+      case "hourly":
+        return <HourlyCalculator />;
+      case "fixed-package":
+        return <FixedPackageCalculator />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-4xl mx-auto space-y-8">
         <Card>
           <CardHeader>
             <CardTitle>Create Your Calculator</CardTitle>
             <CardDescription>
-              Set up your price calculator and customize it for your business
-              needs.
+              Set up your price calculator and customize it for your business needs.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -136,6 +116,8 @@ const CreateCalculatorPage = () => {
                 min={0}
                 value={hourlyWage}
                 onChange={(e) => setHourlyWage(Number(e.target.value))}
+                disabled={isCreating}
+                data-testid="calculator-hourly-wage"
               />
             </div>
             <div>
@@ -146,6 +128,8 @@ const CreateCalculatorPage = () => {
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={selectedCalc}
                 onChange={(e) => setSelectedCalc(e.target.value)}
+                disabled={isCreating}
+                data-testid="calculator-type"
               >
                 {calculators.map((calc) => (
                   <option key={calc.value} value={calc.value}>
@@ -160,32 +144,31 @@ const CreateCalculatorPage = () => {
               onClick={handleCreateCalculator}
               disabled={isCreating}
               className="w-full"
+              data-testid="save-calculator"
             >
               {isCreating ? "Creating..." : "Create Calculator"}
             </Button>
           </CardFooter>
         </Card>
 
-        {selectedCalc === "window-cleaning" && (
-          <WindowCleaningSetupWizard hourlyWage={hourlyWage} />
-        )}
-        {selectedCalc === "time-based" && <TimeBasedCalculator />}
-        {selectedCalc === "area-based" && <AreaBasedCalculator />}
-        {selectedCalc === "number-of-windows" && <NumberOfWindowsCalculator />}
+        {/* Calculator Preview */}
+        {renderCalculator()}
 
+        {/* Embed Section */}
         <Card>
           <CardHeader>
             <CardTitle>Embed on Your Website</CardTitle>
             <CardDescription>
-              Copy and paste the code below into your website to embed your
-              calculator.
+              Copy and paste the code below into your website to embed your calculator.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="bg-gray-100 rounded p-4 font-mono text-xs text-gray-700 select-all">
-              {
+              {createdCalculator ? (
+                `<iframe src="${window.location.origin}/calculator/${createdCalculator.id}" width="100%" height="600" frameBorder="0"></iframe>`
+              ) : (
                 '<iframe src="https://yourdomain.com/embed/calculator-id" width="100%" height="600" frameBorder="0"></iframe>'
-              }
+              )}
             </div>
             <div className="mt-4 text-sm text-gray-500">
               Need help? See our{" "}
@@ -199,6 +182,4 @@ const CreateCalculatorPage = () => {
       </div>
     </div>
   );
-};
-
-export default CreateCalculatorPage;
+}
