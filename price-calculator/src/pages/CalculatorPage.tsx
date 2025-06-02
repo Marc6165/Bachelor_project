@@ -76,18 +76,6 @@ const CalculatorPage = () => {
             <div data-testid="calculator-input-area">
               <WindowCleaningWizard {...commonProps} />
             </div>
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold mb-4">Embed Calculator</h3>
-              <div className="bg-gray-100 rounded p-4">
-                <iframe
-                  src={`${window.location.origin}/calculator/${calculator.id}`}
-                  width="100%"
-                  height="600"
-                  frameBorder="0"
-                  title="Calculator Embed"
-                />
-              </div>
-            </div>
           </div>
         );
       case "area-based":

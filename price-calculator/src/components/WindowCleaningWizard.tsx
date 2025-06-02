@@ -23,7 +23,7 @@ const steps = [
 const windowTypes = Array.from({ length: 18 }, (_, i) => ({
   id: `${i + 1}`,
   name: `VINDUE ${i + 1}`,
-  image: "https://img.icons8.com/windows/96/000000/window.png",
+  image: `https://prisforvinduespudsning.dk/wp-content/plugins/window-cleaning-price-calculator-premium/assets/images/Vindue_${i + 1}.webp`,
 }));
 
 export default function WindowCleaningWizard({ hourlyWage, settings, onQuoteGenerated, onInvoiceCreated }: WindowCleaningWizardProps) {
@@ -147,53 +147,86 @@ export default function WindowCleaningWizard({ hourlyWage, settings, onQuoteGene
           </div>
         )}
         <div className="flex flex-col items-center scale-90 sm:scale-100">
-          <svg width={180} height={240}>
-            {[0, 1, 2, 3].map((floor) => (
-              <g
-                key={floor}
-                onClick={() => {
-                  setSelectedFloors((f) =>
-                    f.includes(floor)
-                      ? f.filter((x) => x !== floor)
-                      : [...f, floor]
-                  );
-                }}
-                style={{ cursor: "pointer" }}
-              >
-                <rect
-                  x={40}
-                  y={170 - floor * 50}
-                  width={80}
-                  height={45}
-                  rx={8}
-                  fill={selectedFloors.includes(floor) ? "#6A94FF" : "#F0F0F0"}
-                  stroke="#36454F"
-                  strokeWidth={2}
-                />
-                {[0, 1, 2].map((j) => (
-                  <rect
-                    key={j}
-                    x={50 + j * 25}
-                    y={180 - floor * 50}
-                    width={18}
-                    height={18}
-                    rx={3}
-                    fill={selectedFloors.includes(floor) ? "#FFEECA" : "#BFDFFF"}
-                  />
-                ))}
-                <text
-                  x={130}
-                  y={198 - floor * 50}
-                  fontSize={16}
-                  fill={selectedFloors.includes(floor) ? "#6A94FF" : "#36454F"}
-                  style={{
-                    fontWeight: selectedFloors.includes(floor) ? 700 : 400,
-                    cursor: "pointer",
+          <svg width="100%" height="250" viewBox="0 0 240 260">
+            <g transform="translate(45, 25)">
+              <rect x="10" y="5" width="130" height="5" fill="#7FFFD4" stroke="#333" strokeWidth="2" rx="5" ry="5" />
+              <rect x="5" y="-15" width="140" height="20" fill="#778899" stroke="#333" strokeWidth="2" rx="5" ry="5" />
+              <rect x="10" y="10" width="130" height="210" fill="#FFFFFF" stroke="#333" strokeWidth="2" rx="5" ry="5" />
+              <rect x="3" y="224" width="143" height="5" fill="#F5F5DC" stroke="#333" strokeWidth="2" rx="5" ry="5" />
+              {[3, 2, 1, 0].map((floor) => (
+                <g
+                  key={floor}
+                  id={`floorGroup${floor}`}
+                  className="clickable-floor"
+                  style={{ cursor: "pointer" }}
+                  onClick={() => {
+                    setSelectedFloors((f) =>
+                      f.includes(floor)
+                        ? f.filter((x) => x !== floor)
+                        : [...f, floor]
+                    );
                   }}
                 >
-                  {floor === 0 ? "Stue" : `${floor}. sal`}
-                </text>
-              </g>
+                  <rect
+                    x="15"
+                    y={20 + (3 - floor) * 50}
+                    width="120"
+                    height="40"
+                    fill={selectedFloors.includes(floor) ? "#6A94FF" : "#F0F0F0"}
+                    stroke="#333"
+                    strokeWidth="2"
+                    rx="5"
+                    ry="5"
+                  />
+                  <rect
+                    x="25"
+                    y={30 + (3 - floor) * 50}
+                    width="20"
+                    height="20"
+                    fill={selectedFloors.includes(floor) ? "#FFEECA" : "#BFDFFF"}
+                    stroke="#333"
+                    strokeWidth="2"
+                    rx="5"
+                    ry="5"
+                  />
+                  <rect
+                    x="65"
+                    y={30 + (3 - floor) * 50}
+                    width="20"
+                    height="20"
+                    fill={selectedFloors.includes(floor) ? "#FFEECA" : "#BFDFFF"}
+                    stroke="#333"
+                    strokeWidth="2"
+                    rx="5"
+                    ry="5"
+                  />
+                  <rect
+                    x="105"
+                    y={30 + (3 - floor) * 50}
+                    width="20"
+                    height="20"
+                    fill={selectedFloors.includes(floor) ? "#FFEECA" : "#BFDFFF"}
+                    stroke="#333"
+                    strokeWidth="2"
+                    rx="5"
+                    ry="5"
+                  />
+                </g>
+              ))}
+            </g>
+            {[3, 2, 1, 0].map((floor) => (
+              <text
+                key={floor}
+                x="200"
+                y={70 + (3 - floor) * 50}
+                fill={selectedFloors.includes(floor) ? "#6A94FF" : "#36454F"}
+                fontSize="1.1rem"
+                fontWeight={selectedFloors.includes(floor) ? "bold" : "normal"}
+                alignmentBaseline="middle"
+                style={{ cursor: "pointer" }}
+              >
+                {floor === 0 ? "Stue" : `${floor}. sal`}
+              </text>
             ))}
           </svg>
         </div>
@@ -606,23 +639,21 @@ export default function WindowCleaningWizard({ hourlyWage, settings, onQuoteGene
   }
 
   return (
-    <div className="bg-gray-50 p-2 sm:p-4 rounded-xl max-w-4xl mx-auto shadow">
+    <div className="bg-white p-2 sm:p-4 rounded-xl max-w-4xl mx-auto shadow border border-gray-200">
       <StepIndicator />
-      <div className="bg-white rounded-xl p-3 sm:p-6 shadow">
-        {submitted ? (
-          <StepSuccess />
-        ) : step === 0 ? (
-          <StepFloors />
-        ) : step === 1 ? (
-          <StepType />
-        ) : step === 2 ? (
-          <StepWindows />
-        ) : step === 3 ? (
-          <StepPrice />
-        ) : (
-          <StepContact />
-        )}
-      </div>
+      {submitted ? (
+        <StepSuccess />
+      ) : step === 0 ? (
+        <StepFloors />
+      ) : step === 1 ? (
+        <StepType />
+      ) : step === 2 ? (
+        <StepWindows />
+      ) : step === 3 ? (
+        <StepPrice />
+      ) : (
+        <StepContact />
+      )}
     </div>
   );
 }
